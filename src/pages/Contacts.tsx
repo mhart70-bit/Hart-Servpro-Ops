@@ -1,12 +1,10 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { fullName, formatDate, isOverdue, cn, PRIORITY_COLORS } from '@/lib/utils'
 import { Search, Plus, Phone, Mail, AlertCircle, CheckCircle } from 'lucide-react'
 import type { Contact, COICategory, Priority } from '@/types'
-
-const LOCATIONS = ['Amarillo', 'Abilene', 'San Angelo', 'Victoria', 'Sugar Land']
 
 interface ContactFormData {
   first_name: string

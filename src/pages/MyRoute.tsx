@@ -1,8 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
-import { fullName, formatDate, isOverdue, cn } from '@/lib/utils'
-import { MapPin, Phone, Clock, CheckCircle2, AlertCircle, ChevronRight } from 'lucide-react'
+import { fullName, cn } from '@/lib/utils'
+import { MapPin, Phone, CheckCircle2, AlertCircle, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Contact } from '@/types'
 
@@ -14,7 +14,6 @@ interface RouteContact extends Contact {
 export default function MyRoute() {
   const { profile, isOwner, isGM } = useAuth()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
 
   const { data: route, isLoading } = useQuery({
     queryKey: ['my-route', profile?.id],
@@ -47,11 +46,6 @@ export default function MyRoute() {
     enabled: !!profile,
   })
 
-  const logVisit = useMutation({
-    mutationFn: async (contact: RouteContact) => {
-      navigate(`/log?contact_id=${contact.id}`)
-    },
-  })
 
   if (isLoading) {
     return (
@@ -87,7 +81,7 @@ export default function MyRoute() {
                 'bg-card border rounded-xl p-4 flex items-start gap-3 cursor-pointer hover:border-primary/30 transition-colors group',
                 contact.priority === 'high' ? 'border-red-400/30' : 'border-border'
               )}
-              onClick={() => logVisit.mutate(contact)}
+              onClick={() => navigate(`/log?contact_id=${contact.id}`)}
             >
               {/* Priority indicator */}
               <div className="mt-0.5">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -7,10 +7,10 @@ import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
 import { parseNote } from '@/lib/claude'
 import { fullName, formatDate } from '@/lib/utils'
 import {
-  Mic, MicOff, Square, CheckCircle2, AlertCircle,
+  Mic, Square, CheckCircle2, AlertCircle,
   Edit3, Search, ChevronDown
 } from 'lucide-react'
-import type { Contact, ParsedNote, ActivityType } from '@/types'
+import type { Contact, ParsedNote } from '@/types'
 
 type Step = 'input' | 'parsing' | 'preview' | 'saved'
 
@@ -36,7 +36,7 @@ export default function LogActivity() {
       let q = supabase.from('contacts').select('id, first_name, last_name, company, category:coi_categories(name)').eq('is_active', true).order('last_name')
       if (profile?.id && profile.role === 'rep') q = q.eq('assigned_rep_id', profile.id)
       const { data } = await q
-      return (data ?? []) as (Contact & { category: { name: string } | null })[]
+      return (data ?? []) as unknown as (Contact & { category: { name: string } | null })[]
     },
     enabled: !!profile,
   })
@@ -73,10 +73,6 @@ export default function LogActivity() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!parsed || !profile) return
-
-      // Calculate next visit date for the contact
-      const contact = contacts?.find(c => c.id === selectedContactId)
-      const freqDays = 30 // default, will be from contact
 
       // Save activity
       const { error } = await supabase.from('activities').insert({

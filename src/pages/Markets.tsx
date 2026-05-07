@@ -17,7 +17,7 @@ interface MarketStat {
 }
 
 export default function Markets() {
-  const { isOwner, isGM, profile } = useAuth()
+  const { isOwner, isGM } = useAuth()
   const monthStart = startOfMonth(new Date()).toISOString()
 
   const { data: locations } = useQuery({

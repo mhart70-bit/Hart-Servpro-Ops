@@ -57,8 +57,6 @@ export default function Dashboard() {
   const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString()
   const dayStart = startOfDay(now).toISOString()
 
-  const baseFilter = isOwner || isGM ? {} : { rep_id: profile?.id }
-
   // Activity counts
   const { data: activityStats } = useQuery({
     queryKey: ['dashboard-activity', profile?.id, isOwner],
@@ -118,7 +116,7 @@ export default function Dashboard() {
         .limit(8)
       if (!isOwner && !isGM && profile?.id) q = q.eq('rep_id', profile.id)
       const { data } = await q
-      return (data ?? []) as RecentActivity[]
+      return (data ?? []) as unknown as RecentActivity[]
     },
     enabled: !!profile,
   })

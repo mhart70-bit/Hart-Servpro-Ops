@@ -6,13 +6,37 @@ interface UseVoiceRecorderOptions {
   onTranscript?: (transcript: string) => void
 }
 
+// Minimal interface for SpeechRecognition (not all browsers expose the global type)
+interface SpeechRecognitionEvent {
+  resultIndex: number
+  results: SpeechRecognitionResultList
+}
+
+interface SpeechRecognitionErrorEvent {
+  error: string
+}
+
+interface SpeechRecognitionInstance {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  onresult: ((event: SpeechRecognitionEvent) => void) | null
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null
+  onend: (() => void) | null
+  start(): void
+  stop(): void
+  abort(): void
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance
+
 export function useVoiceRecorder({ onTranscript }: UseVoiceRecorderOptions = {}) {
   const [state, setState] = useState<RecorderState>('idle')
   const [transcript, setTranscript] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [duration, setDuration] = useState(0)
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTimeRef = useRef<number>(0)
   const finalTranscriptRef = useRef<string>('')
@@ -37,14 +61,18 @@ export function useVoiceRecorder({ onTranscript }: UseVoiceRecorderOptions = {})
       setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000))
     }, 1000)
 
-    const SpeechRecognitionClass = (window.SpeechRecognition || window.webkitSpeechRecognition) as typeof SpeechRecognition
+    const win = window as Window & {
+      SpeechRecognition?: SpeechRecognitionConstructor
+      webkitSpeechRecognition?: SpeechRecognitionConstructor
+    }
+    const SpeechRecognitionClass = (win.SpeechRecognition ?? win.webkitSpeechRecognition) as SpeechRecognitionConstructor
     const recognition = new SpeechRecognitionClass()
     recognition.continuous = true
     recognition.interimResults = true
     recognition.lang = 'en-US'
     recognitionRef.current = recognition
 
-    recognition.onresult = (event) => {
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interim = ''
       let final = finalTranscriptRef.current
 
@@ -59,7 +87,7 @@ export function useVoiceRecorder({ onTranscript }: UseVoiceRecorderOptions = {})
       setTranscript(final + interim)
     }
 
-    recognition.onerror = (event) => {
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       setError(`Recording error: ${event.error}. Try typing your note instead.`)
       setState('error')
       stopTimer()
@@ -68,17 +96,17 @@ export function useVoiceRecorder({ onTranscript }: UseVoiceRecorderOptions = {})
     recognition.onend = () => {
       stopTimer()
       const final = finalTranscriptRef.current.trim()
-      if (final && state !== 'error') {
+      if (final) {
         setTranscript(final)
         setState('done')
         onTranscript?.(final)
-      } else if (!final) {
+      } else {
         setState('idle')
       }
     }
 
     recognition.start()
-  }, [isSupported, onTranscript, state])
+  }, [isSupported, onTranscript])
 
   const stopRecording = useCallback(() => {
     recognitionRef.current?.stop()
@@ -112,13 +140,5 @@ export function useVoiceRecorder({ onTranscript }: UseVoiceRecorderOptions = {})
     startRecording,
     stopRecording,
     reset,
-  }
-}
-
-// Extend window for TypeScript
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition
-    webkitSpeechRecognition: typeof SpeechRecognition
   }
 }
