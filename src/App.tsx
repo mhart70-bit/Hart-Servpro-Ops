@@ -20,7 +20,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/Hart-Servpro-Ops">
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={
