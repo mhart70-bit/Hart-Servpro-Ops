@@ -1,19 +1,24 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #0f1117;
-  --color-foreground: #e2e8f0;
-  --color-card: #161922;
-  --color-card-foreground: #e2e8f0;
-  --color-muted: #1e2230;
-  --color-muted-foreground: #94a3b8;
-  --color-border: #28303a;
-  --color-primary: #dc2626;
-  --color-primary-foreground: #ffffff;
-  --color-sidebar: #0b0d12;
+  /* ── Manus dark-navy + warm-gold palette ── */
+  --color-background:       oklch(16% .02 260);   /* #161c2e dark navy */
+  --color-foreground:       oklch(92% .012 85);   /* #e8e4d8 warm off-white */
+  --color-card:             oklch(20% .025 260);  /* #1d2338 card navy */
+  --color-card-foreground:  oklch(92% .012 85);
+  --color-muted:            oklch(24% .03 260);   /* #252b42 muted navy */
+  --color-muted-foreground: oklch(65% .012 85);   /* #9e9a90 warm gray */
+  --color-border:           oklch(100% 0 0 / .09);/* white 9% */
+  --color-primary:          oklch(78% .12 80);    /* #c9a22a warm gold */
+  --color-primary-foreground: oklch(18% .03 260); /* dark navy text on gold */
+  --color-destructive:      oklch(62% .22 27);    /* red */
+  --color-destructive-foreground: oklch(98% 0 0);
+  --color-sidebar:          oklch(14% .025 260);  /* #111726 darkest navy */
+  --color-accent:           oklch(78% .12 80);    /* same gold */
 
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --radius: 0.5rem;
+  --font-sans:  'Inter', system-ui, sans-serif;
+  --font-serif: 'Fraunces', Georgia, serif;
+  --radius: 0.75rem;
 }
 
 @layer base {

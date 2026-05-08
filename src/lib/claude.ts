@@ -44,7 +44,7 @@ export async function parseNote(transcript: string): Promise<ParsedNote> {
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-6',
       max_tokens: 512,
       system: SYSTEM_PROMPT,
       messages: [
@@ -57,8 +57,13 @@ export async function parseNote(transcript: string): Promise<ParsedNote> {
   })
 
   if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Claude API error: ${error}`)
+    const body = await response.text()
+    let message = `Claude API error ${response.status}`
+    try {
+      const parsed = JSON.parse(body)
+      message = parsed?.error?.message ?? message
+    } catch { /* use raw body */ }
+    throw new Error(message || body)
   }
 
   const data = await response.json()
