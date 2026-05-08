@@ -2,118 +2,134 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { formatCurrency, formatRelative } from '@/lib/utils'
-import {
-  Activity,
-  TrendingUp,
-  AlertTriangle,
-  Phone,
-  MapPin,
-  DollarSign,
-  Flag,
-  Calendar,
-} from 'lucide-react'
-import { format, startOfMonth, startOfWeek, startOfDay } from 'date-fns'
+import { startOfMonth, startOfWeek } from 'date-fns'
+import { FileText, TrendingUp, Flag, AlertTriangle, ChevronRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
-function StatCard({
-  label,
-  value,
-  sub,
-  icon: Icon,
-  accent,
-}: {
-  label: string
-  value: string | number
-  sub?: string
-  icon: React.ElementType
-  accent?: boolean
-}) {
-  return (
-    <div className={`bg-card border rounded-xl p-4 flex items-start gap-3 ${accent ? 'border-primary/30' : 'border-border'}`}>
-      <div className={`p-2 rounded-lg flex-shrink-0 ${accent ? 'bg-primary/10' : 'bg-muted'}`}>
-        <Icon className={`w-4 h-4 ${accent ? 'text-primary' : 'text-muted-foreground'}`} />
-      </div>
-      <div className="min-w-0">
-        <div className={`text-2xl font-bold ${accent ? 'text-primary' : 'text-foreground'}`}>{value}</div>
-        <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
-        {sub && <div className="text-xs text-muted-foreground/70 mt-0.5">{sub}</div>}
-      </div>
-    </div>
-  )
+const MARKETS = ['Amarillo', 'Abilene', 'Sugar Land', 'San Angelo', 'Victoria']
+
+interface MarketActivity {
+  location_id: string | null
+  flagged: boolean
+  location: { name: string | null } | null
+}
+
+interface MarketDeal {
+  location_id: string | null
+  deal_value: number | null
+  stage: string
+  location: { name: string | null } | null
 }
 
 interface RecentActivity {
   id: string
-  type: string
   notes: string | null
   occurred_at: string
   contact: { first_name: string | null; last_name: string | null; company: string | null } | null
   rep: { full_name: string | null } | null
+  location: { name: string | null } | null
 }
 
 export default function Dashboard() {
   const { profile, isOwner, isGM } = useAuth()
-  const now = new Date()
-  const monthStart = startOfMonth(now).toISOString()
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString()
-  const dayStart = startOfDay(now).toISOString()
+  const navigate = useNavigate()
+  const monthStart = startOfMonth(new Date()).toISOString()
+  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString()
 
-  // Activity counts
-  const { data: activityStats } = useQuery({
-    queryKey: ['dashboard-activity', profile?.id, isOwner],
+  const firstName = profile?.full_name?.split(' ')[0] ?? null
+
+  // Total notes
+  const { data: notesCount } = useQuery({
+    queryKey: ['dash-notes', profile?.id, isOwner],
     queryFn: async () => {
-      let q = supabase.from('activities').select('id, occurred_at, type', { count: 'exact' })
+      let q = supabase.from('activities').select('id', { count: 'exact' })
       if (!isOwner && !isGM && profile?.id) q = q.eq('rep_id', profile.id)
-
-      const [today, week, month] = await Promise.all([
-        q.gte('occurred_at', dayStart),
-        q.gte('occurred_at', weekStart),
-        q.gte('occurred_at', monthStart),
-      ])
-      return {
-        today: today.count ?? 0,
-        week: week.count ?? 0,
-        month: month.count ?? 0,
-      }
-    },
-    enabled: !!profile,
-  })
-
-  // Sales MTD
-  const { data: salesStats } = useQuery({
-    queryKey: ['dashboard-sales', profile?.id, isOwner],
-    queryFn: async () => {
-      let q = supabase.from('deals').select('deal_value, stage')
-      if (!isOwner && !isGM && profile?.id) q = q.eq('rep_id', profile.id)
-
-      const { data } = await q.gte('created_at', monthStart)
-      const paid = (data ?? []).filter((d) => d.stage === 'paid').reduce((s, d) => s + (d.deal_value ?? 0), 0)
-      const pipeline = (data ?? []).filter((d) => d.stage !== 'lost').reduce((s, d) => s + (d.deal_value ?? 0), 0)
-      return { paid, pipeline }
-    },
-    enabled: !!profile,
-  })
-
-  // Flagged count
-  const { data: flaggedCount } = useQuery({
-    queryKey: ['dashboard-flagged', profile?.id, isOwner],
-    queryFn: async () => {
-      let q = supabase.from('activities').select('id', { count: 'exact' }).eq('flagged', true)
-      if (!isOwner && !isGM && profile?.id) q = q.eq('rep_id', profile.id)
+      else if (isGM && profile?.location_id) q = q.eq('location_id', profile.location_id)
       const { count } = await q
       return count ?? 0
     },
     enabled: !!profile,
   })
 
-  // Recent activity feed
-  const { data: recentActivity } = useQuery({
-    queryKey: ['dashboard-recent', profile?.id, isOwner],
+  // Pipeline value (open deals)
+  const { data: pipeline } = useQuery({
+    queryKey: ['dash-pipeline', profile?.id, isOwner],
+    queryFn: async () => {
+      let q = supabase.from('deals').select('deal_value, stage')
+      if (!isOwner && !isGM && profile?.id) q = q.eq('rep_id', profile.id)
+      else if (isGM && profile?.location_id) q = q.eq('location_id', profile.location_id)
+      const { data } = await q
+      return (data ?? [])
+        .filter(d => !['paid', 'lost'].includes(d.stage))
+        .reduce((s, d) => s + (d.deal_value ?? 0), 0)
+    },
+    enabled: !!profile,
+  })
+
+  // Flagged count
+  const { data: flaggedCount } = useQuery({
+    queryKey: ['dash-flagged', profile?.id, isOwner],
+    queryFn: async () => {
+      let q = supabase.from('activities').select('id', { count: 'exact' }).eq('flagged', true)
+      if (!isOwner && !isGM && profile?.id) q = q.eq('rep_id', profile.id)
+      else if (isGM && profile?.location_id) q = q.eq('location_id', profile.location_id)
+      const { count } = await q
+      return count ?? 0
+    },
+    enabled: !!profile,
+  })
+
+  // Overdue contacts (high-urgency proxy)
+  const { data: overdueCount } = useQuery({
+    queryKey: ['dash-overdue', profile?.id, isOwner],
+    queryFn: async () => {
+      let q = supabase
+        .from('contacts')
+        .select('id', { count: 'exact' })
+        .lt('next_visit_due_at', new Date().toISOString())
+        .eq('is_active', true)
+      if (!isOwner && !isGM && profile?.id) q = q.eq('assigned_rep_id', profile.id)
+      else if (isGM && profile?.location_id) q = q.eq('location_id', profile.location_id)
+      const { count } = await q
+      return count ?? 0
+    },
+    enabled: !!profile,
+  })
+
+  // Admin: market activity + deals snapshot
+  const { data: marketActivities } = useQuery({
+    queryKey: ['dash-market-acts', monthStart],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('activities')
+        .select('location_id, flagged, location:locations(name)')
+        .gte('occurred_at', weekStart)
+      return (data ?? []) as unknown as MarketActivity[]
+    },
+    enabled: !!(isOwner || isGM),
+  })
+
+  const { data: marketDeals } = useQuery({
+    queryKey: ['dash-market-deals', monthStart],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('deals')
+        .select('location_id, deal_value, stage, location:locations(name)')
+        .gte('created_at', monthStart)
+      return (data ?? []) as unknown as MarketDeal[]
+    },
+    enabled: !!(isOwner || isGM),
+  })
+
+  // Recent feed for reps
+  const { data: recentFeed } = useQuery({
+    queryKey: ['dash-recent', profile?.id],
     queryFn: async () => {
       let q = supabase
         .from('activities')
-        .select('id, type, notes, occurred_at, contact:contacts(first_name, last_name, company), rep:profiles(full_name)')
+        .select('id, notes, occurred_at, contact:contacts(first_name, last_name, company), rep:profiles(full_name), location:locations(name)')
         .order('occurred_at', { ascending: false })
-        .limit(8)
+        .limit(6)
       if (!isOwner && !isGM && profile?.id) q = q.eq('rep_id', profile.id)
       const { data } = await q
       return (data ?? []) as unknown as RecentActivity[]
@@ -121,109 +137,166 @@ export default function Dashboard() {
     enabled: !!profile,
   })
 
-  // Overdue follow-ups
-  const { data: overdueCount } = useQuery({
-    queryKey: ['dashboard-overdue', profile?.id],
-    queryFn: async () => {
-      let q = supabase
-        .from('contacts')
-        .select('id', { count: 'exact' })
-        .lt('next_visit_due_at', now.toISOString())
-        .eq('is_active', true)
-      if (!isOwner && !isGM && profile?.id) q = q.eq('assigned_rep_id', profile.id)
-      const { count } = await q
-      return count ?? 0
+  const STATS = [
+    {
+      label: 'Notes logged',
+      value: notesCount ?? 0,
+      icon: FileText,
+      accent: false,
     },
-    enabled: !!profile,
-  })
-
-  const greeting = (() => {
-    const h = now.getHours()
-    if (h < 12) return 'Good morning'
-    if (h < 17) return 'Good afternoon'
-    return 'Good evening'
-  })()
+    {
+      label: 'Pipeline value',
+      value: formatCurrency(pipeline ?? 0),
+      icon: TrendingUp,
+      accent: (pipeline ?? 0) > 0,
+    },
+    {
+      label: 'Flagged for review',
+      value: flaggedCount ?? 0,
+      icon: Flag,
+      accent: (flaggedCount ?? 0) > 0,
+    },
+    {
+      label: 'Overdue visits',
+      value: overdueCount ?? 0,
+      icon: AlertTriangle,
+      accent: (overdueCount ?? 0) > 0,
+    },
+  ]
 
   return (
-    <div className="p-4 lg:p-6 max-w-5xl mx-auto">
+    <div className="p-4 lg:p-6 max-w-4xl mx-auto">
+
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">
-          {greeting}{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[10px] text-primary uppercase tracking-widest font-medium">
+            {isOwner ? 'Owner view' : isGM ? 'GM view' : 'Field rep view'}
+          </span>
+        </div>
+        <h1 className="text-3xl font-serif font-semibold text-foreground">
+          {isOwner ? `Good day${firstName ? `, ${firstName}` : ''}.` : `Welcome${firstName ? `, ${firstName}` : ''}.`}
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {format(now, 'EEEE, MMMM d')} · {isOwner ? 'All markets' : profile?.location?.name ?? 'Your market'}
+        <p className="text-sm text-muted-foreground mt-1.5 max-w-md">
+          {isOwner
+            ? 'A unified view of every market, every rep, every dollar of pipeline logged this period.'
+            : 'Your submitted notes, your pipeline, your next follow-ups.'}
         </p>
+        <button
+          onClick={() => navigate('/log')}
+          className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded-lg transition-colors"
+        >
+          Submit a note <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* Activity stats */}
-      <div className="mb-2">
-        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Activity</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard label="Touches today" value={activityStats?.today ?? 0} icon={Activity} accent={true} />
-          <StatCard label="This week" value={activityStats?.week ?? 0} icon={Calendar} />
-          <StatCard label="This month" value={activityStats?.month ?? 0} icon={Phone} />
-          <StatCard
-            label="Overdue visits"
-            value={overdueCount ?? 0}
-            icon={AlertTriangle}
-            accent={(overdueCount ?? 0) > 0}
-          />
-        </div>
-      </div>
-
-      {/* Sales stats */}
-      <div className="mt-4 mb-2">
-        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Sales</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard
-            label="Sales MTD"
-            value={formatCurrency(salesStats?.paid ?? 0)}
-            icon={DollarSign}
-            accent={(salesStats?.paid ?? 0) > 0}
-          />
-          <StatCard
-            label="Pipeline value"
-            value={formatCurrency(salesStats?.pipeline ?? 0)}
-            icon={TrendingUp}
-          />
-        </div>
-      </div>
-
-      {/* Bottom row */}
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <StatCard label="Flagged notes" value={flaggedCount ?? 0} icon={Flag} accent={(flaggedCount ?? 0) > 0} />
-        <StatCard label="Active market" value={isOwner ? '5 markets' : (profile?.location?.name ?? '—')} icon={MapPin} />
-      </div>
-
-      {/* Recent activity feed */}
-      <div className="mt-6">
-        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Recent activity</h2>
-        <div className="bg-card border border-border rounded-xl divide-y divide-border">
-          {(recentActivity ?? []).length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-              No activity yet. Log your first contact using the <strong>Log Activity</strong> tab.
+      {/* 4 stat tiles */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+        {STATS.map(({ label, value, icon: Icon, accent }) => (
+          <div
+            key={label}
+            className={`bg-card border rounded-xl p-4 ${accent ? 'border-primary/30' : 'border-border'}`}
+          >
+            <div className="flex items-center gap-1.5 mb-2">
+              <Icon className={`w-3.5 h-3.5 ${accent ? 'text-primary' : 'text-muted-foreground'}`} />
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">{label}</span>
             </div>
-          ) : (
-            (recentActivity ?? []).map((a) => {
-              const name = a.contact
-                ? [a.contact.first_name, a.contact.last_name].filter(Boolean).join(' ') || a.contact.company || 'Unknown contact'
-                : 'No contact'
+            <div className={`text-2xl font-serif font-semibold ${accent ? 'text-primary' : 'text-foreground'}`}>
+              {value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Admin: Markets at a glance */}
+      {(isOwner || isGM) && (
+        <div className="mb-8">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-sm font-semibold text-foreground">Markets at a glance</h2>
+            <button
+              onClick={() => navigate('/markets')}
+              className="text-xs text-primary hover:underline"
+            >
+              Full breakdown →
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">Pipeline and activity across all five Texas franchises.</p>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+            {MARKETS.map(market => {
+              const acts = (marketActivities ?? []).filter(a => a.location?.name === market)
+              const deals = (marketDeals ?? []).filter(d => d.location?.name === market)
+              const value = deals
+                .filter(d => !['paid', 'lost'].includes(d.stage))
+                .reduce((s, d) => s + (d.deal_value ?? 0), 0)
+              const flagged = acts.filter(a => a.flagged).length
+
               return (
-                <div key={a.id} className="px-4 py-3 flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
-                    {a.type === 'visit' ? <MapPin className="w-3.5 h-3.5 text-muted-foreground" /> : <Phone className="w-3.5 h-3.5 text-muted-foreground" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-sm font-medium text-foreground truncate">{name}</span>
-                      <span className="text-xs text-muted-foreground flex-shrink-0">{formatRelative(a.occurred_at)}</span>
-                    </div>
-                    {a.notes && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{a.notes}</p>}
-                    {(isOwner || isGM) && a.rep?.full_name && (
-                      <p className="text-xs text-muted-foreground/60 mt-0.5">{a.rep.full_name}</p>
+                <div key={market} className="bg-card border border-border rounded-xl p-3">
+                  <div className="flex items-start justify-between gap-1 mb-2">
+                    <span className="text-xs font-medium text-foreground leading-tight">{market}</span>
+                    {flagged > 0 && (
+                      <span className="text-[9px] bg-destructive/10 text-destructive border border-destructive/20 px-1 py-0.5 rounded flex-shrink-0">
+                        {flagged} flag
+                      </span>
                     )}
                   </div>
+                  <div className="text-lg font-serif font-semibold text-primary">{formatCurrency(value)}</div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {acts.length} note{acts.length !== 1 ? 's' : ''} · {flagged} flagged
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Rep: Your market */}
+      {!isOwner && !isGM && (
+        <div className="mb-8 bg-card border border-border rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-foreground mb-1">Your market</h2>
+          <p className="text-2xl font-serif font-semibold text-foreground mt-2">
+            {profile?.location?.name ?? 'Unassigned'}
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {profile?.location?.name
+              ? "All your submitted notes stay within this market's ledger."
+              : "Mark will assign you to one of the five Texas markets shortly."}
+          </p>
+        </div>
+      )}
+
+      {/* Recent activity feed */}
+      <div>
+        <h2 className="text-sm font-semibold text-foreground mb-3">Recent notes</h2>
+        <div className="bg-card border border-border rounded-xl divide-y divide-border">
+          {(recentFeed ?? []).length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+              No notes yet. Hit <strong>Submit a note</strong> to log your first contact.
+            </div>
+          ) : (
+            (recentFeed ?? []).map(a => {
+              const name = a.contact
+                ? [a.contact.first_name, a.contact.last_name].filter(Boolean).join(' ') || a.contact.company
+                : null
+              return (
+                <div key={a.id} className="px-4 py-3">
+                  <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                    <span className="text-sm font-medium text-foreground truncate">
+                      {name ?? 'Untitled note'}
+                    </span>
+                    <span className="text-xs text-muted-foreground flex-shrink-0">
+                      {formatRelative(a.occurred_at)}
+                    </span>
+                  </div>
+                  {a.notes && (
+                    <p className="text-xs text-muted-foreground line-clamp-1">{a.notes}</p>
+                  )}
+                  {(isOwner || isGM) && (a.rep?.full_name || a.location?.name) && (
+                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                      {a.rep?.full_name}{a.location?.name ? ` · ${a.location.name}` : ''}
+                    </p>
+                  )}
                 </div>
               )
             })
