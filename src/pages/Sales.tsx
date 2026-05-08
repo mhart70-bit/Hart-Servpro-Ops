@@ -23,6 +23,7 @@ export default function Sales() {
   const queryClient = useQueryClient()
   const [stageFilter, setStageFilter] = useState<DealStage | 'all'>('all')
   const [showForm, setShowForm] = useState(false)
+  const [dealError, setDealError] = useState<string | null>(null)
   const [form, setForm] = useState({
     title: '', deal_value: '', damage_type: '' as DamageType | '',
     stage: 'emergency_call' as DealStage, insurance_claim_number: '',
@@ -69,13 +70,15 @@ export default function Sales() {
       const idx = DEAL_STAGE_ORDER.indexOf(currentStage)
       if (idx === -1 || idx >= DEAL_STAGE_ORDER.length - 1) return
       const nextStage = DEAL_STAGE_ORDER[idx + 1]
-      await supabase.from('deals').update({ stage: nextStage, updated_at: new Date().toISOString() }).eq('id', id)
+      const { error } = await supabase.from('deals').update({ stage: nextStage, updated_at: new Date().toISOString() }).eq('id', id)
+      if (error) throw error
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['deals'] }),
   })
 
   async function handleSaveDeal() {
-    await supabase.from('deals').insert({
+    setDealError(null)
+    const { error } = await supabase.from('deals').insert({
       org_id: profile?.org_id,
       location_id: profile?.location_id,
       rep_id: profile?.id,
@@ -90,6 +93,10 @@ export default function Sales() {
       emergency_priority: form.emergency_priority,
       notes: form.notes || null,
     })
+    if (error) {
+      setDealError(error.message)
+      return
+    }
     queryClient.invalidateQueries({ queryKey: ['deals'] })
     setShowForm(false)
   }
@@ -274,8 +281,15 @@ export default function Sales() {
                 <span className="text-sm text-foreground">Emergency priority</span>
               </label>
             </div>
+            {dealError && (
+              <div className="px-5 pb-3">
+                <div className="px-3 py-2 bg-red-400/10 border border-red-400/20 rounded-lg">
+                  <p className="text-xs text-red-400">{dealError}</p>
+                </div>
+              </div>
+            )}
             <div className="px-5 py-4 border-t border-border flex gap-2 sticky bottom-0 bg-card">
-              <button onClick={() => setShowForm(false)} className="flex-1 py-2 text-sm text-muted-foreground bg-muted rounded-lg">Cancel</button>
+              <button onClick={() => { setShowForm(false); setDealError(null) }} className="flex-1 py-2 text-sm text-muted-foreground bg-muted rounded-lg">Cancel</button>
               <button onClick={handleSaveDeal} className="flex-1 py-2 text-sm font-medium text-white bg-primary hover:bg-red-700 rounded-lg transition-colors">Save deal</button>
             </div>
           </div>

@@ -72,7 +72,7 @@ export default function LogActivity() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!parsed || !profile) return
+      if (!parsed || !profile) throw new Error('Missing required data — please try again.')
 
       // Save activity
       const { error } = await supabase.from('activities').insert({

@@ -88,7 +88,26 @@ export function useVoiceRecorder({ onTranscript }: UseVoiceRecorderOptions = {})
     }
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      setError(`Recording error: ${event.error}. Try typing your note instead.`)
+      const ERROR_MESSAGES: Record<string, string> = {
+        'not-allowed':
+          'Microphone access was denied. Please allow microphone access in your browser settings, then try again.',
+        'no-speech':
+          'No speech was detected. Please try again and speak clearly into your microphone.',
+        'network':
+          'A network error occurred during speech recognition. Check your connection or switch to text mode.',
+        'audio-capture':
+          'No microphone was found. Please connect a microphone or switch to text mode.',
+        'aborted':
+          'Recording was interrupted. Please try again.',
+        'bad-grammar':
+          'Speech recognition encountered an error. Please try again or switch to text mode.',
+        'language-not-supported':
+          'Speech recognition is not supported for this language. Please switch to text mode.',
+        'service-not-allowed':
+          'Speech recognition is blocked on this device. Please switch to text mode.',
+      }
+      const message = ERROR_MESSAGES[event.error] ?? 'Recording failed. Please switch to text mode and type your note.'
+      setError(message)
       setState('error')
       stopTimer()
     }
@@ -101,7 +120,8 @@ export function useVoiceRecorder({ onTranscript }: UseVoiceRecorderOptions = {})
         setState('done')
         onTranscript?.(final)
       } else {
-        setState('idle')
+        // Preserve 'error' state if onerror already fired — don't overwrite with 'idle'
+        setState(prev => (prev === 'error' ? 'error' : 'idle'))
       }
     }
 

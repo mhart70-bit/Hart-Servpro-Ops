@@ -41,6 +41,7 @@ export default function Contacts() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<ContactFormData>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const { data: categories } = useQuery({
     queryKey: ['coi-categories'],
@@ -87,6 +88,7 @@ export default function Contacts() {
 
   async function handleSave() {
     setSaving(true)
+    setSaveError(null)
     const categoryObj = categories?.find(c => c.id === form.category_id)
     const freqDays = form.visit_frequency_days
       ? parseInt(form.visit_frequency_days)
@@ -117,7 +119,12 @@ export default function Contacts() {
       tags: [],
     }
 
-    await supabase.from('contacts').insert(payload)
+    const { error } = await supabase.from('contacts').insert(payload)
+    if (error) {
+      setSaveError(error.message)
+      setSaving(false)
+      return
+    }
     queryClient.invalidateQueries({ queryKey: ['contacts'] })
     setForm(EMPTY_FORM)
     setShowForm(false)
@@ -341,8 +348,15 @@ export default function Contacts() {
               </div>
             </div>
 
+            {saveError && (
+              <div className="px-5 pb-3">
+                <div className="px-3 py-2 bg-red-400/10 border border-red-400/20 rounded-lg">
+                  <p className="text-xs text-red-400">{saveError}</p>
+                </div>
+              </div>
+            )}
             <div className="px-5 py-4 border-t border-border flex gap-2 sticky bottom-0 bg-card">
-              <button onClick={() => setShowForm(false)}
+              <button onClick={() => { setShowForm(false); setSaveError(null) }}
                 className="flex-1 py-2 text-sm text-muted-foreground hover:text-foreground bg-muted rounded-lg transition-colors">
                 Cancel
               </button>
