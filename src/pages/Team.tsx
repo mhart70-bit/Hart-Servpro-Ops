@@ -22,8 +22,6 @@ export default function Team() {
   const { isOwner, isGM, profile } = useAuth()
   const queryClient = useQueryClient()
 
-  if (!isOwner && !isGM) return <Navigate to="/dashboard" replace />
-
   const { data: members, isLoading } = useQuery({
     queryKey: ['team-members'],
     queryFn: async () => {
@@ -39,6 +37,7 @@ export default function Team() {
       if (error) throw error
       return (data ?? []) as TeamMember[]
     },
+    enabled: isOwner || isGM,
   })
 
   const { data: locations } = useQuery({
@@ -70,6 +69,8 @@ export default function Team() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['team-members'] }),
   })
+
+  if (!isOwner && !isGM) return <Navigate to="/dashboard" replace />
 
   return (
     <div className="p-4 lg:p-6 max-w-3xl mx-auto">

@@ -23,8 +23,6 @@ export default function FlaggedQueue() {
   const queryClient = useQueryClient()
   const [cleared, setCleared] = useState<Set<string>>(new Set())
 
-  if (!isOwner && !isGM) return <Navigate to="/dashboard" replace />
-
   const { data: entries, isLoading } = useQuery({
     queryKey: ['flagged-queue'],
     queryFn: async () => {
@@ -36,6 +34,7 @@ export default function FlaggedQueue() {
       if (error) throw error
       return (data ?? []) as FlaggedEntry[]
     },
+    enabled: isOwner || isGM,
   })
 
   const clearMutation = useMutation({
@@ -53,6 +52,8 @@ export default function FlaggedQueue() {
       queryClient.invalidateQueries({ queryKey: ['dashboard-activity'] })
     },
   })
+
+  if (!isOwner && !isGM) return <Navigate to="/dashboard" replace />
 
   const visible = (entries ?? []).filter(e => !cleared.has(e.id))
 
