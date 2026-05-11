@@ -161,7 +161,7 @@ export default function Markets() {
               </div>
               <div>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-0.5">Sales MTD</div>
-                <div className="text-lg font-bold text-green-500">{formatCurrency(m.sales_mtd)}</div>
+                <div className="text-lg font-bold text-foreground">{formatCurrency(m.sales_mtd)}</div>
               </div>
               <div>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-0.5">Pipeline</div>

@@ -1,20 +1,52 @@
 @import "tailwindcss";
 
 @theme {
-  /* ── Manus dark-navy + warm-gold palette ── */
-  --color-background:       oklch(16% .02 260);   /* #161c2e dark navy */
-  --color-foreground:       oklch(92% .012 85);   /* #e8e4d8 warm off-white */
-  --color-card:             oklch(20% .025 260);  /* #1d2338 card navy */
-  --color-card-foreground:  oklch(92% .012 85);
-  --color-muted:            oklch(24% .03 260);   /* #252b42 muted navy */
-  --color-muted-foreground: oklch(65% .012 85);   /* #9e9a90 warm gray */
-  --color-border:           oklch(100% 0 0 / .09);/* white 9% */
-  --color-primary:          oklch(78% .12 80);    /* #c9a22a warm gold */
-  --color-primary-foreground: oklch(18% .03 260); /* dark navy text on gold */
-  --color-destructive:      oklch(62% .22 27);    /* red */
-  --color-destructive-foreground: oklch(98% 0 0);
-  --color-sidebar:          oklch(14% .025 260);  /* #111726 darkest navy */
-  --color-accent:           oklch(78% .12 80);    /* same gold */
+  /* ── Manus exact palette (scraped from live app) ── */
+
+  /* Content area — warm off-white */
+  --color-background:                oklch(98.5% .006 85);
+  --color-foreground:                oklch(20% .02 260);
+
+  /* Cards — pure white */
+  --color-card:                      oklch(100% 0 0);
+  --color-card-foreground:           oklch(20% .02 260);
+  --color-popover:                   oklch(100% 0 0);
+  --color-popover-foreground:        oklch(20% .02 260);
+
+  /* Primary — dark navy (buttons, active states) */
+  --color-primary:                   oklch(25% .05 260);
+  --color-primary-foreground:        oklch(98% .008 85);
+
+  /* Secondary — very light warm */
+  --color-secondary:                 oklch(96% .008 85);
+  --color-secondary-foreground:      oklch(30% .04 260);
+
+  /* Muted */
+  --color-muted:                     oklch(95.5% .006 85);
+  --color-muted-foreground:          oklch(50% .015 260);
+
+  /* Accent — warm gold (used sparingly) */
+  --color-accent:                    oklch(78% .12 80);
+  --color-accent-foreground:         oklch(22% .03 260);
+
+  /* Destructive */
+  --color-destructive:               oklch(55% .22 27);
+  --color-destructive-foreground:    oklch(98.5% 0 0);
+
+  /* Borders & inputs */
+  --color-border:                    oklch(90% .01 85);
+  --color-input:                     oklch(92% .008 85);
+  --color-ring:                      oklch(55% .08 260);
+
+  /* Sidebar — dark navy */
+  --color-sidebar:                   oklch(20% .035 260);
+  --color-sidebar-foreground:        oklch(90% .02 85);
+  --color-sidebar-accent:            oklch(28% .04 260);
+  --color-sidebar-accent-foreground: oklch(96% .01 85);
+  --color-sidebar-border:            oklch(30% .04 260);
+  --color-sidebar-primary:           oklch(78% .12 80);
+  --color-sidebar-primary-foreground: oklch(18% .03 260);
+  --color-sidebar-ring:              oklch(78% .12 80);
 
   --font-sans:  'Inter', system-ui, sans-serif;
   --font-serif: 'Fraunces', Georgia, serif;

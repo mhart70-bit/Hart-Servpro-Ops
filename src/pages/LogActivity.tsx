@@ -8,11 +8,17 @@ import { parseNote } from '@/lib/claude'
 import { fullName, formatDate } from '@/lib/utils'
 import {
   Mic, Square, CheckCircle2, AlertCircle,
-  Edit3, Search, ChevronDown
+  Search, ChevronDown, Send,
 } from 'lucide-react'
 import type { Contact, ParsedNote } from '@/types'
 
 type Step = 'input' | 'parsing' | 'preview' | 'saved'
+
+const EXAMPLE_NOTES = [
+  '"Just met with Sarah Chen at Westside Property Management in Houston. Category 3 water loss in the basement. Sending $12,400 mitigation estimate. Follow up Thursday at 9am."',
+  '"Inspected a fire-damaged duplex for owner Mike Rivera, 512-555-0199. Emergency call. Quoting $34k for mitigation. Proposal going out tomorrow."',
+  '"Visited Oakwood Apartments, talked with Dana. No damage yet but they want a quarterly inspection contract. Deal around $800/quarter. Follow up in two weeks."',
+]
 
 export default function LogActivity() {
   const { profile } = useAuth()
@@ -22,7 +28,6 @@ export default function LogActivity() {
   const presetContactId = searchParams.get('contact_id')
 
   const [step, setStep] = useState<Step>('input')
-  const [mode, setMode] = useState<'voice' | 'text'>('voice')
   const [manualText, setManualText] = useState('')
   const [parsed, setParsed] = useState<ParsedNote | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
@@ -42,7 +47,6 @@ export default function LogActivity() {
   })
 
   const selectedContact = contacts?.find(c => c.id === selectedContactId)
-
   const filteredContacts = (contacts ?? []).filter(c => {
     const s = contactSearch.toLowerCase()
     return !s || [c.first_name, c.last_name, c.company].some(v => v?.toLowerCase().includes(s))
@@ -65,16 +69,16 @@ export default function LogActivity() {
     }
   }
 
-  async function handleTextSubmit() {
-    if (!manualText.trim()) return
-    await handleProcess(manualText.trim())
+  async function handleSubmit() {
+    const text = manualText.trim() || voiceRecorder.transcript.trim()
+    if (!text) return
+    await handleProcess(text)
   }
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!parsed || !profile) throw new Error('Missing required data — please try again.')
 
-      // Save activity
       const { error } = await supabase.from('activities').insert({
         org_id: profile.org_id,
         contact_id: selectedContactId || null,
@@ -91,28 +95,20 @@ export default function LogActivity() {
         flagged_reason: parsed.confidence_score < 0.6 ? 'Low AI confidence — please review' : null,
         occurred_at: new Date().toISOString(),
       })
-
       if (error) throw error
 
-      // Agentic: update contact's last_contacted + next_visit_due
       if (selectedContactId) {
         const { data: contactData } = await supabase
-          .from('contacts')
-          .select('visit_frequency_days')
-          .eq('id', selectedContactId)
-          .single()
-
+          .from('contacts').select('visit_frequency_days').eq('id', selectedContactId).single()
         const days = contactData?.visit_frequency_days ?? 30
         const nextVisit = new Date()
         nextVisit.setDate(nextVisit.getDate() + days)
-
         await supabase.from('contacts').update({
           last_contacted_at: new Date().toISOString(),
           next_visit_due_at: nextVisit.toISOString(),
         }).eq('id', selectedContactId)
       }
 
-      // Agentic: if deal value mentioned, create/update a deal
       if (parsed.deal_value && selectedContactId) {
         await supabase.from('deals').insert({
           org_id: profile.org_id,
@@ -137,74 +133,81 @@ export default function LogActivity() {
     },
   })
 
+  // ── Parsing ──
   if (step === 'parsing') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-10 h-10 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin mx-auto mb-4" />
           <p className="text-sm text-muted-foreground">Claude is reading your note…</p>
         </div>
       </div>
     )
   }
 
+  // ── Saved ──
   if (step === 'saved') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
-          <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
-          <h2 className="text-lg font-semibold text-foreground">Logged!</h2>
+          <CheckCircle2 className="w-12 h-12 text-foreground mx-auto mb-3" />
+          <h2 className="text-3xl font-serif font-semibold text-foreground">Logged.</h2>
           <p className="text-sm text-muted-foreground mt-1">Activity saved and schedule updated.</p>
         </div>
       </div>
     )
   }
 
+  // ── Preview ──
   if (step === 'preview' && parsed) {
     return (
-      <div className="p-4 lg:p-6 max-w-lg mx-auto">
-        <div className="mb-5">
-          <h1 className="text-2xl font-bold text-foreground">Looks right?</h1>
-          <p className="text-sm text-muted-foreground mt-1">Review what Claude extracted — confirm or go back to edit.</p>
+      <div className="p-6 lg:p-10 max-w-2xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-4xl font-serif font-semibold text-foreground">Looks right?</h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            Review what Claude extracted — confirm or go back to edit.
+          </p>
         </div>
 
         {parsed.confidence_score < 0.7 && (
-          <div className="flex items-start gap-2 p-3 bg-amber-400/10 border border-amber-400/20 rounded-xl mb-4">
-            <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-400">Confidence is {Math.round(parsed.confidence_score * 100)}% — double-check the details below.</p>
+          <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl mb-4">
+            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-700">
+              Confidence is {Math.round(parsed.confidence_score * 100)}% — double-check the details below.
+            </p>
           </div>
         )}
 
-        <div className="bg-card border border-border rounded-xl divide-y divide-border mb-4">
+        <div className="bg-card border border-border rounded-2xl divide-y divide-border mb-5">
           {[
-            { label: 'Contact', value: parsed.contact_name },
-            { label: 'Company', value: parsed.company },
-            { label: 'Type', value: parsed.activity_type },
-            { label: 'Outcome', value: parsed.outcome },
-            { label: 'Notes', value: parsed.notes },
-            { label: 'Follow-up', value: parsed.follow_up_date ? `${formatDate(parsed.follow_up_date)}${parsed.follow_up_action ? ' — ' + parsed.follow_up_action : ''}` : null },
+            { label: 'Contact',    value: parsed.contact_name },
+            { label: 'Company',    value: parsed.company },
+            { label: 'Type',       value: parsed.activity_type },
+            { label: 'Outcome',    value: parsed.outcome },
+            { label: 'Notes',      value: parsed.notes },
+            { label: 'Follow-up',  value: parsed.follow_up_date ? `${formatDate(parsed.follow_up_date)}${parsed.follow_up_action ? ' — ' + parsed.follow_up_action : ''}` : null },
             { label: 'Deal value', value: parsed.deal_value ? `$${parsed.deal_value.toLocaleString()}` : null },
-            { label: 'Damage type', value: parsed.damage_type },
-            { label: 'Urgency', value: parsed.urgency },
+            { label: 'Damage',     value: parsed.damage_type },
+            { label: 'Urgency',    value: parsed.urgency },
           ].filter(r => r.value).map(row => (
-            <div key={row.label} className="px-4 py-2.5 flex gap-3">
-              <span className="text-xs text-muted-foreground w-20 flex-shrink-0 pt-0.5">{row.label}</span>
+            <div key={row.label} className="px-5 py-3 flex gap-4">
+              <span className="text-xs text-muted-foreground w-24 flex-shrink-0 pt-0.5">{row.label}</span>
               <span className="text-sm text-foreground">{row.value}</span>
             </div>
           ))}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <button
             onClick={() => { setStep('input'); voiceRecorder.reset() }}
-            className="flex-1 py-2.5 text-sm text-muted-foreground hover:text-foreground bg-muted rounded-xl transition-colors"
+            className="flex-1 py-2.5 text-sm text-muted-foreground hover:text-foreground bg-secondary border border-border rounded-xl transition-colors"
           >
             ← Re-record
           </button>
           <button
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
-            className="flex-1 py-2.5 text-sm font-semibold text-white bg-primary hover:bg-red-700 disabled:opacity-50 rounded-xl transition-colors"
+            className="flex-1 py-2.5 text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 disabled:opacity-50 rounded-xl transition-colors"
           >
             {saveMutation.isPending ? 'Saving…' : '✓ Confirm & save'}
           </button>
@@ -213,156 +216,162 @@ export default function LogActivity() {
     )
   }
 
+  // ── Input ──
+  const roleLabel = profile?.role === 'owner'
+    ? 'Owner'
+    : profile?.role === 'gm'
+    ? 'General Manager'
+    : profile?.location?.name ?? 'Unassigned rep'
+
+  const inputText = manualText || voiceRecorder.transcript
+  const canSubmit = inputText.trim().length > 0 && voiceRecorder.state !== 'recording'
+
   return (
-    <div className="p-4 lg:p-6 max-w-lg mx-auto">
-      <div className="mb-5">
-        <h1 className="text-2xl font-bold text-foreground">Log Activity</h1>
-        <p className="text-sm text-muted-foreground mt-1">Speak or type — Claude handles the rest.</p>
+    <div className="p-6 lg:p-10 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="mb-8">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">{roleLabel}</p>
+        <h1 className="text-4xl font-serif font-semibold text-foreground">Log a field note</h1>
+        <p className="text-sm text-muted-foreground mt-2">
+          Dictate or type a short note. Remember the framework:{' '}
+          <span className="font-semibold text-foreground">Who. What. When.</span>
+        </p>
       </div>
 
-      {/* Contact picker */}
-      <div className="mb-4">
-        <label className="block text-xs font-medium text-muted-foreground mb-1.5">Contact (optional)</label>
-        <div className="relative">
-          <button
-            onClick={() => setShowContactPicker(!showContactPicker)}
-            className="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm text-left flex items-center justify-between hover:border-primary/50 transition-colors"
-          >
-            <span className={selectedContact ? 'text-foreground' : 'text-muted-foreground'}>
-              {selectedContact ? `${fullName(selectedContact)}${selectedContact.company ? ' · ' + selectedContact.company : ''}` : 'Select or skip…'}
-            </span>
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
-          </button>
+      {/* Two-column */}
+      <div className="grid lg:grid-cols-[1fr_300px] gap-5">
+        {/* Left: input */}
+        <div className="bg-card border border-border rounded-2xl p-6 flex flex-col">
+          <h2 className="text-xl font-serif font-semibold text-foreground mb-5">Voice or text</h2>
 
-          {showContactPicker && (
-            <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-card border border-border rounded-xl shadow-xl max-h-60 overflow-hidden">
-              <div className="p-2 border-b border-border">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                  <input
-                    autoFocus
-                    value={contactSearch}
-                    onChange={e => setContactSearch(e.target.value)}
-                    placeholder="Search…"
-                    className="w-full pl-8 pr-3 py-1.5 bg-muted rounded-md text-xs text-foreground placeholder-muted-foreground focus:outline-none"
-                  />
+          {/* Contact picker pill */}
+          <div className="relative mb-4">
+            <button
+              onClick={() => setShowContactPicker(!showContactPicker)}
+              className="inline-flex items-center gap-2 px-3 py-1.5 border border-border rounded-full text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            >
+              <Search className="w-3 h-3" />
+              {selectedContact
+                ? `${fullName(selectedContact)}${selectedContact.company ? ' · ' + selectedContact.company : ''}`
+                : 'Link a contact (optional)'}
+              <ChevronDown className="w-3 h-3" />
+            </button>
+
+            {showContactPicker && (
+              <div className="absolute top-full left-0 z-20 mt-1 w-72 bg-card border border-border rounded-xl shadow-xl max-h-60 overflow-hidden">
+                <div className="p-2 border-b border-border">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <input
+                      autoFocus
+                      value={contactSearch}
+                      onChange={e => setContactSearch(e.target.value)}
+                      placeholder="Search…"
+                      className="w-full pl-8 pr-3 py-1.5 bg-muted rounded-md text-xs text-foreground placeholder-muted-foreground focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="overflow-y-auto max-h-48">
+                  <button
+                    onClick={() => { setSelectedContactId(''); setShowContactPicker(false) }}
+                    className="w-full px-3 py-2 text-left text-xs text-muted-foreground hover:bg-muted"
+                  >
+                    No contact / new contact
+                  </button>
+                  {filteredContacts.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => { setSelectedContactId(c.id); setShowContactPicker(false) }}
+                      className="w-full px-3 py-2 text-left hover:bg-muted transition-colors"
+                    >
+                      <div className="text-sm font-medium text-foreground">{fullName(c)}</div>
+                      {c.company && <div className="text-xs text-muted-foreground">{c.company}</div>}
+                    </button>
+                  ))}
                 </div>
               </div>
-              <div className="overflow-y-auto max-h-48">
-                <button
-                  onClick={() => { setSelectedContactId(''); setShowContactPicker(false) }}
-                  className="w-full px-3 py-2 text-left text-xs text-muted-foreground hover:bg-muted"
-                >
-                  No contact / new contact
-                </button>
-                {filteredContacts.map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => { setSelectedContactId(c.id); setShowContactPicker(false) }}
-                    className="w-full px-3 py-2 text-left hover:bg-muted transition-colors"
-                  >
-                    <div className="text-sm font-medium text-foreground">{fullName(c)}</div>
-                    {c.company && <div className="text-xs text-muted-foreground">{c.company}</div>}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+            )}
+          </div>
 
-      {/* Mode toggle */}
-      <div className="flex gap-1 p-1 bg-muted rounded-lg mb-5">
-        <button
-          onClick={() => setMode('voice')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-sm font-medium transition-colors ${mode === 'voice' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-        >
-          <Mic className="w-4 h-4" />
-          Voice
-        </button>
-        <button
-          onClick={() => setMode('text')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-sm font-medium transition-colors ${mode === 'text' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-        >
-          <Edit3 className="w-4 h-4" />
-          Type
-        </button>
-      </div>
-
-      {/* Voice mode */}
-      {mode === 'voice' && (
-        <div className="flex flex-col items-center gap-4">
-          {!voiceRecorder.isSupported && (
-            <div className="w-full p-3 bg-amber-400/10 border border-amber-400/20 rounded-xl text-xs text-amber-400 text-center">
-              Voice not supported in this browser. Switch to Chrome on Android, or use text mode.
-            </div>
-          )}
-
+          {/* Voice button */}
           {voiceRecorder.state === 'idle' && (
             <button
               onClick={voiceRecorder.startRecording}
               disabled={!voiceRecorder.isSupported}
-              className="w-28 h-28 rounded-full bg-primary hover:bg-red-700 disabled:opacity-40 flex flex-col items-center justify-center gap-1 transition-colors shadow-lg shadow-primary/20"
+              className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-full text-sm text-foreground hover:bg-muted disabled:opacity-40 transition-colors mb-4 self-start"
             >
-              <Mic className="w-8 h-8 text-white" />
-              <span className="text-xs text-white/80">Tap to speak</span>
+              <Mic className="w-4 h-4" />
+              Start voice note
             </button>
           )}
 
           {voiceRecorder.state === 'recording' && (
-            <>
+            <div className="flex items-center gap-3 mb-4">
               <button
                 onClick={voiceRecorder.stopRecording}
-                className="w-28 h-28 rounded-full bg-red-600 hover:bg-red-700 flex flex-col items-center justify-center gap-1 animate-pulse shadow-lg shadow-red-600/30"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full text-sm transition-colors"
               >
-                <Square className="w-7 h-7 text-white" />
-                <span className="text-xs text-white/80">{voiceRecorder.duration}s</span>
+                <Square className="w-3.5 h-3.5" />
+                Stop · {voiceRecorder.duration}s
               </button>
-              {voiceRecorder.transcript && (
-                <div className="w-full p-3 bg-muted rounded-xl text-sm text-foreground leading-relaxed">
-                  {voiceRecorder.transcript}
-                </div>
-              )}
-            </>
-          )}
-
-          {voiceRecorder.error && (
-            <div className="w-full p-3 bg-red-400/10 border border-red-400/20 rounded-xl text-xs text-red-400">
-              {voiceRecorder.error}
+              <span className="text-xs text-muted-foreground animate-pulse">Listening…</span>
             </div>
           )}
 
-          {parseError && (
-            <div className="w-full p-3 bg-red-400/10 border border-red-400/20 rounded-xl text-xs text-red-400">
-              {parseError}
+          {!voiceRecorder.isSupported && (
+            <p className="text-xs text-muted-foreground mb-3">
+              Voice not supported in this browser. Use Chrome or type below.
+            </p>
+          )}
+
+          {(voiceRecorder.error || parseError) && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 mb-3">
+              {voiceRecorder.error || parseError}
             </div>
           )}
-        </div>
-      )}
 
-      {/* Text mode */}
-      {mode === 'text' && (
-        <div className="space-y-3">
+          {/* Textarea */}
           <textarea
-            value={manualText}
-            onChange={e => setManualText(e.target.value)}
-            rows={6}
-            placeholder="Just visited Sarah Chen at Westside Property Management. She's interested in quarterly inspections. Deal value around $2,000. Follow up Tuesday morning…"
-            className="w-full px-3 py-3 bg-card border border-border rounded-xl text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none leading-relaxed"
+            value={inputText}
+            onChange={e => {
+              setManualText(e.target.value)
+              voiceRecorder.reset()
+            }}
+            rows={9}
+            placeholder="Type what happened — Who you spoke with, What the job is, and When you're following up."
+            className="flex-1 w-full px-3 py-3 bg-transparent border border-border rounded-xl text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-foreground/20 resize-none leading-relaxed"
           />
-          <button
-            onClick={handleTextSubmit}
-            disabled={!manualText.trim()}
-            className="w-full py-3 text-sm font-semibold text-white bg-primary hover:bg-red-700 disabled:opacity-40 rounded-xl transition-colors"
-          >
-            Process note →
-          </button>
-        </div>
-      )}
 
-      <p className="text-center text-xs text-muted-foreground mt-5">
-        Claude will extract contact, outcome, follow-up date, and deal value automatically.
-      </p>
+          {/* Submit bar */}
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-xs text-muted-foreground">
+              {voiceRecorder.state === 'recording'
+                ? 'Recording…'
+                : voiceRecorder.transcript && !manualText
+                ? 'Input: Voice'
+                : 'Input: Text'}
+            </span>
+            <button
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              className="inline-flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary/90 disabled:opacity-40 text-primary-foreground text-sm font-medium rounded-full transition-colors"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Submit to the Ledger
+            </button>
+          </div>
+        </div>
+
+        {/* Right: examples */}
+        <div className="bg-card border border-border rounded-2xl p-6">
+          <h2 className="text-xl font-serif font-semibold text-foreground mb-5">Example notes</h2>
+          <div className="space-y-5">
+            {EXAMPLE_NOTES.map((note, i) => (
+              <p key={i} className="text-sm text-muted-foreground italic leading-relaxed">{note}</p>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

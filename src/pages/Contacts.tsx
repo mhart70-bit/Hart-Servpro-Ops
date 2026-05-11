@@ -141,7 +141,7 @@ export default function Contacts() {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add contact
@@ -361,7 +361,7 @@ export default function Contacts() {
                 Cancel
               </button>
               <button onClick={handleSave} disabled={saving}
-                className="flex-1 py-2 text-sm font-medium text-white bg-primary hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors">
+                className="flex-1 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 disabled:opacity-50 rounded-lg transition-colors">
                 {saving ? 'Saving…' : 'Save contact'}
               </button>
             </div>

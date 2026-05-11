@@ -14,7 +14,7 @@ const STAGE_COLORS: Record<DealStage, string> = {
   job_start: 'bg-cyan-400/10 text-cyan-400 border-cyan-400/20',
   completion: 'bg-teal-400/10 text-teal-400 border-teal-400/20',
   invoiced: 'bg-orange-400/10 text-orange-400 border-orange-400/20',
-  paid: 'bg-green-400/10 text-green-400 border-green-400/20',
+  paid: 'bg-secondary text-muted-foreground border-border',
   lost: 'bg-slate-400/10 text-slate-400 border-slate-400/20',
 }
 
@@ -111,7 +111,7 @@ export default function Sales() {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
           New deal
@@ -120,12 +120,12 @@ export default function Sales() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="bg-card border border-green-500/20 rounded-xl p-3">
+        <div className="bg-card border border-border rounded-xl p-3">
           <div className="flex items-center gap-1.5 mb-1">
-            <DollarSign className="w-3.5 h-3.5 text-green-500" />
+            <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Sales MTD</span>
           </div>
-          <div className="text-xl font-bold text-green-500">{formatCurrency(stats?.mtd ?? 0)}</div>
+          <div className="text-xl font-bold text-foreground">{formatCurrency(stats?.mtd ?? 0)}</div>
         </div>
         <div className="bg-card border border-border rounded-xl p-3">
           <div className="flex items-center gap-1.5 mb-1">
@@ -290,7 +290,7 @@ export default function Sales() {
             )}
             <div className="px-5 py-4 border-t border-border flex gap-2 sticky bottom-0 bg-card">
               <button onClick={() => { setShowForm(false); setDealError(null) }} className="flex-1 py-2 text-sm text-muted-foreground bg-muted rounded-lg">Cancel</button>
-              <button onClick={handleSaveDeal} className="flex-1 py-2 text-sm font-medium text-white bg-primary hover:bg-red-700 rounded-lg transition-colors">Save deal</button>
+              <button onClick={handleSaveDeal} className="flex-1 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors">Save deal</button>
             </div>
           </div>
         </div>

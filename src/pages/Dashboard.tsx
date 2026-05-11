@@ -165,45 +165,40 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="p-4 lg:p-6 max-w-4xl mx-auto">
+    <div className="p-6 lg:p-10 max-w-5xl mx-auto">
 
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-[10px] text-primary uppercase tracking-widest font-medium">
+      <div className="flex items-start justify-between gap-4 mb-10">
+        <div>
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
             {isOwner ? 'Owner view' : isGM ? 'GM view' : 'Field rep view'}
-          </span>
+          </p>
+          <h1 className="text-4xl font-serif font-semibold text-foreground">
+            {isOwner ? `Good day${firstName ? `, ${firstName}` : ''}.` : `Welcome${firstName ? `, ${firstName}` : ''}.`}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-2 max-w-lg">
+            {isOwner
+              ? 'A unified view of every market, every rep, every dollar of pipeline logged this period.'
+              : 'Your submitted notes, your pipeline, your next follow-ups.'}
+          </p>
         </div>
-        <h1 className="text-3xl font-serif font-semibold text-foreground">
-          {isOwner ? `Good day${firstName ? `, ${firstName}` : ''}.` : `Welcome${firstName ? `, ${firstName}` : ''}.`}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1.5 max-w-md">
-          {isOwner
-            ? 'A unified view of every market, every rep, every dollar of pipeline logged this period.'
-            : 'Your submitted notes, your pipeline, your next follow-ups.'}
-        </p>
         <button
           onClick={() => navigate('/log')}
-          className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded-lg transition-colors"
+          className="flex-shrink-0 inline-flex items-center gap-1.5 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded-full transition-colors"
         >
           Submit a note <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
       {/* 4 stat tiles */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-        {STATS.map(({ label, value, icon: Icon, accent }) => (
-          <div
-            key={label}
-            className={`bg-card border rounded-xl p-4 ${accent ? 'border-primary/30' : 'border-border'}`}
-          >
-            <div className="flex items-center gap-1.5 mb-2">
-              <Icon className={`w-3.5 h-3.5 ${accent ? 'text-primary' : 'text-muted-foreground'}`} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-10">
+        {STATS.map(({ label, value, icon: Icon }) => (
+          <div key={label} className="bg-card border border-border rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
               <span className="text-[10px] text-muted-foreground uppercase tracking-widest">{label}</span>
+              <Icon className="w-4 h-4 text-muted-foreground" />
             </div>
-            <div className={`text-2xl font-serif font-semibold ${accent ? 'text-primary' : 'text-foreground'}`}>
-              {value}
-            </div>
+            <div className="text-3xl font-serif font-semibold text-foreground">{value}</div>
           </div>
         ))}
       </div>
@@ -212,16 +207,16 @@ export default function Dashboard() {
       {(isOwner || isGM) && (
         <div className="mb-8">
           <div className="flex items-baseline justify-between mb-3">
-            <h2 className="text-sm font-semibold text-foreground">Markets at a glance</h2>
+            <h2 className="text-xl font-serif font-semibold text-foreground">Markets at a glance</h2>
             <button
               onClick={() => navigate('/markets')}
-              className="text-xs text-primary hover:underline"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              Full breakdown →
+              Full breakdown ↗
             </button>
           </div>
-          <p className="text-xs text-muted-foreground mb-4">Pipeline and activity across all five Texas franchises.</p>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+          <p className="text-sm text-muted-foreground mb-5">Pipeline and activity across all five Texas franchises.</p>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
             {MARKETS.map(market => {
               const acts = (marketActivities ?? []).filter(a => a.location?.name === market)
               const deals = (marketDeals ?? []).filter(d => d.location?.name === market)
@@ -231,18 +226,18 @@ export default function Dashboard() {
               const flagged = acts.filter(a => a.flagged).length
 
               return (
-                <div key={market} className="bg-card border border-border rounded-xl p-3">
-                  <div className="flex items-start justify-between gap-1 mb-2">
+                <div key={market} className="bg-card border border-border rounded-xl p-4">
+                  <div className="flex items-start justify-between gap-1 mb-3">
                     <span className="text-xs font-medium text-foreground leading-tight">{market}</span>
                     {flagged > 0 && (
-                      <span className="text-[9px] bg-destructive/10 text-destructive border border-destructive/20 px-1 py-0.5 rounded flex-shrink-0">
-                        {flagged} flag
+                      <span className="text-[9px] text-muted-foreground border border-border px-1.5 py-0.5 rounded-full flex-shrink-0">
+                        {flagged} flagged
                       </span>
                     )}
                   </div>
-                  <div className="text-lg font-serif font-semibold text-primary">{formatCurrency(value)}</div>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {acts.length} note{acts.length !== 1 ? 's' : ''} · {flagged} flagged
+                  <div className="text-2xl font-serif font-semibold text-foreground">{formatCurrency(value)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {acts.length} note{acts.length !== 1 ? 's' : ''}
                   </p>
                 </div>
               )
@@ -253,12 +248,12 @@ export default function Dashboard() {
 
       {/* Rep: Your market */}
       {!isOwner && !isGM && (
-        <div className="mb-8 bg-card border border-border rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-foreground mb-1">Your market</h2>
-          <p className="text-2xl font-serif font-semibold text-foreground mt-2">
+        <div className="mb-10 bg-card border border-border rounded-xl p-6">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-widest mb-3">Your market</h2>
+          <p className="text-3xl font-serif font-semibold text-foreground">
             {profile?.location?.name ?? 'Unassigned'}
           </p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-2">
             {profile?.location?.name
               ? "All your submitted notes stay within this market's ledger."
               : "Mark will assign you to one of the five Texas markets shortly."}
@@ -266,13 +261,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Recent activity feed */}
+      {/* Recent notes feed */}
       <div>
-        <h2 className="text-sm font-semibold text-foreground mb-3">Recent notes</h2>
+        <h2 className="text-xl font-serif font-semibold text-foreground mb-4">Recent notes</h2>
         <div className="bg-card border border-border rounded-xl divide-y divide-border">
           {(recentFeed ?? []).length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-              No notes yet. Hit <strong>Submit a note</strong> to log your first contact.
+            <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+              No notes yet. Hit <strong className="text-foreground">Submit a note</strong> to log your first contact.
             </div>
           ) : (
             (recentFeed ?? []).map(a => {
@@ -280,7 +275,7 @@ export default function Dashboard() {
                 ? [a.contact.first_name, a.contact.last_name].filter(Boolean).join(' ') || a.contact.company
                 : null
               return (
-                <div key={a.id} className="px-4 py-3">
+                <div key={a.id} className="px-5 py-4">
                   <div className="flex items-baseline justify-between gap-2 mb-0.5">
                     <span className="text-sm font-medium text-foreground truncate">
                       {name ?? 'Untitled note'}
@@ -290,10 +285,10 @@ export default function Dashboard() {
                     </span>
                   </div>
                   {a.notes && (
-                    <p className="text-xs text-muted-foreground line-clamp-1">{a.notes}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{a.notes}</p>
                   )}
                   {(isOwner || isGM) && (a.rep?.full_name || a.location?.name) && (
-                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                    <p className="text-[10px] text-muted-foreground/60 mt-1">
                       {a.rep?.full_name}{a.location?.name ? ` · ${a.location.name}` : ''}
                     </p>
                   )}
