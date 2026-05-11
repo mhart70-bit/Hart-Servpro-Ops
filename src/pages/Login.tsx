@@ -29,15 +29,15 @@ export default function Login() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center mb-3">
-            <span className="text-white text-xl font-bold">H</span>
+            <span className="text-primary-foreground text-xl font-bold">H</span>
           </div>
-          <h1 className="text-xl font-semibold text-foreground">Hart SERVPRO</h1>
+          <h1 className="text-2xl font-serif font-semibold text-foreground">Hart SERVPRO</h1>
           <p className="text-sm text-muted-foreground mt-1">Sales CRM</p>
         </div>
 
         {/* Card */}
         <div className="bg-card border border-border rounded-xl p-6">
-          <h2 className="text-base font-semibold text-foreground mb-4">Sign in</h2>
+          <h2 className="text-lg font-serif font-semibold text-foreground mb-4">Sign in</h2>
 
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
@@ -71,15 +71,15 @@ export default function Login() {
             </div>
 
             {error && (
-              <div className="px-3 py-2 bg-red-400/10 border border-red-400/20 rounded-lg">
-                <p className="text-xs text-red-400">{error}</p>
+              <div className="px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <p className="text-xs text-destructive">{error}</p>
               </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+              className="w-full py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground text-sm font-medium rounded-lg transition-colors"
             >
               {loading ? 'Signing in…' : 'Sign in'}
             </button>

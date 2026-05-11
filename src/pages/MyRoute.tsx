@@ -58,18 +58,19 @@ export default function MyRoute() {
   }
 
   return (
-    <div className="p-4 lg:p-6 max-w-2xl mx-auto">
-      <div className="mb-5">
-        <h1 className="text-2xl font-bold text-foreground">My Route</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+    <div className="p-6 lg:p-10 max-w-2xl mx-auto">
+      <div className="mb-8">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">FIELD OPS</p>
+        <h1 className="text-4xl font-serif font-semibold text-foreground">My Route</h1>
+        <p className="text-sm text-muted-foreground mt-2">
           {route?.length ?? 0} contacts due for a visit — sorted by urgency
         </p>
       </div>
 
       {(route ?? []).length === 0 ? (
-        <div className="bg-card border border-border rounded-xl p-8 text-center">
-          <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto mb-3" />
-          <h3 className="text-base font-semibold text-foreground">You're all caught up!</h3>
+        <div className="bg-card border border-border rounded-xl p-12 text-center">
+          <CheckCircle2 className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+          <h3 className="text-lg font-serif font-semibold text-foreground">You're all caught up!</h3>
           <p className="text-sm text-muted-foreground mt-1">No overdue visits. Check back tomorrow.</p>
         </div>
       ) : (
@@ -79,14 +80,14 @@ export default function MyRoute() {
               key={contact.id}
               className={cn(
                 'bg-card border rounded-xl p-4 flex items-start gap-3 cursor-pointer hover:border-primary/30 transition-colors group',
-                contact.priority === 'high' ? 'border-red-400/30' : 'border-border'
+                contact.priority === 'high' ? 'border-destructive/30' : 'border-border'
               )}
               onClick={() => navigate(`/log?contact_id=${contact.id}`)}
             >
               {/* Priority indicator */}
               <div className="mt-0.5">
                 {contact.priority === 'high' || contact.days_overdue > 7 ? (
-                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                  <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
                 ) : (
                   <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 )}
@@ -100,7 +101,7 @@ export default function MyRoute() {
                   </span>
                   <span className={cn(
                     'text-xs flex-shrink-0 font-medium',
-                    contact.days_overdue > 7 ? 'text-red-400' : contact.days_overdue > 3 ? 'text-amber-400' : 'text-muted-foreground'
+                    contact.days_overdue > 7 ? 'text-destructive' : contact.days_overdue > 3 ? 'text-accent' : 'text-muted-foreground'
                   )}>
                     {contact.days_overdue === 0 ? 'Due today' : `${contact.days_overdue}d overdue`}
                   </span>
