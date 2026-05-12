@@ -15,7 +15,22 @@ export type DealStage =
 
 export type ActivityType = 'visit' | 'call' | 'email' | 'note' | 'voice_note'
 
+export type OutcomeType =
+  | 'first_intro'
+  | 'relationship_dev'
+  | 'erp_conversation'
+  | 'client_maintenance'
+
+export type ERPStatus =
+  | 'not_introduced'
+  | 'walk_scheduled'
+  | 'verbal_commitment'
+  | 'signed'
+
 export type Priority = 'high' | 'medium' | 'low'
+
+export type MessageChannel = 'sms' | 'whatsapp'
+export type MessageStatus = 'pending' | 'processing' | 'linked' | 'failed'
 
 export interface Organization {
   id: string
@@ -75,6 +90,10 @@ export interface Contact {
   last_contacted_at: string | null
   next_visit_due_at: string | null
   priority: Priority
+  erp_status: ERPStatus
+  erp_signed_at: string | null
+  lat: number | null
+  lng: number | null
   tags: string[]
   notes: string | null
   is_active: boolean
@@ -92,12 +111,14 @@ export interface Activity {
   rep_id: string | null
   location_id: string | null
   type: ActivityType
+  outcome_type: OutcomeType | null
   outcome: string | null
   notes: string | null
   raw_transcript: string | null
   follow_up_date: string | null
   follow_up_action: string | null
   audio_url: string | null
+  photo_urls: string[]
   confidence_score: number | null
   flagged: boolean
   flagged_reason: string | null
@@ -152,6 +173,7 @@ export interface ParsedNote {
   contact_name: string | null
   company: string | null
   activity_type: ActivityType
+  outcome_type: OutcomeType | null
   outcome: string | null
   notes: string
   follow_up_date: string | null
@@ -177,4 +199,58 @@ export interface DashboardStats {
 export interface LocationStats extends DashboardStats {
   location: Location
   top_rep: string | null
+}
+
+// ── Messaging (SMS / WhatsApp placeholder) ──────────────────
+export interface InboundMessage {
+  id: string
+  org_id: string
+  channel: MessageChannel
+  from_number: string
+  raw_body: string
+  status: MessageStatus
+  rep_id: string | null
+  contact_id: string | null
+  activity_id: string | null
+  error_message: string | null
+  received_at: string
+  processed_at: string | null
+}
+
+export interface RepPhone {
+  id: string
+  rep_id: string
+  org_id: string
+  phone: string
+  channel: 'sms' | 'whatsapp' | 'both'
+  is_primary: boolean
+  created_at: string
+}
+
+// ── Geo ─────────────────────────────────────────────────────
+export interface LatLng {
+  lat: number
+  lng: number
+}
+
+// ── ERP / Outcome label maps ─────────────────────────────────
+export const ERP_STATUS_LABELS: Record<ERPStatus, string> = {
+  not_introduced:   'Not Introduced',
+  walk_scheduled:   'Walk Scheduled',
+  verbal_commitment:'Verbal Commitment',
+  signed:           'ERP Signed',
+}
+
+export const ERP_STATUS_COLORS: Record<ERPStatus, string> = {
+  not_introduced:   'text-muted-foreground border-border',
+  walk_scheduled:   'text-blue-400 border-blue-400/30 bg-blue-400/10',
+  verbal_commitment:'text-amber-400 border-amber-400/30 bg-amber-400/10',
+  signed:           'text-green-400 border-green-400/30 bg-green-400/10',
+}
+
+export const OUTCOME_TYPE_LABELS: Record<OutcomeType, string> = {
+  first_intro:        'First Introduction',
+  relationship_dev:   'Relationship Development',
+  erp_conversation:   'ERP Conversation',
+  client_maintenance: 'Client Maintenance',
 }

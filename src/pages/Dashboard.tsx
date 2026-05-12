@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
-import { formatCurrency, formatRelative } from '@/lib/utils'
+import { formatCurrency, formatRelative, fullName } from '@/lib/utils'
 import { startOfMonth, startOfWeek } from 'date-fns'
-import { FileText, TrendingUp, Flag, AlertTriangle, ChevronRight } from 'lucide-react'
+import { FileText, TrendingUp, Flag, AlertTriangle, ChevronRight, MapPin, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import type { Contact } from '@/types'
 
 const MARKETS = ['Amarillo', 'Abilene', 'Sugar Land', 'San Angelo', 'Victoria']
 
@@ -121,6 +122,25 @@ export default function Dashboard() {
     enabled: !!(isOwner || isGM),
   })
 
+  // Today's hit list (rep view only)
+  const { data: hitList } = useQuery({
+    queryKey: ['dash-hitlist', profile?.id],
+    queryFn: async () => {
+      const todayEnd = new Date()
+      todayEnd.setHours(23, 59, 59, 999)
+      const { data } = await supabase
+        .from('contacts')
+        .select('id, first_name, last_name, company, phone, next_visit_due_at, priority, category:coi_categories(name)')
+        .eq('is_active', true)
+        .eq('assigned_rep_id', profile!.id)
+        .lte('next_visit_due_at', todayEnd.toISOString())
+        .order('next_visit_due_at', { ascending: true })
+        .limit(5)
+      return (data ?? []) as unknown as Contact[]
+    },
+    enabled: !!profile && !isOwner && !isGM,
+  })
+
   // Recent feed for reps
   const { data: recentFeed } = useQuery({
     queryKey: ['dash-recent', profile?.id],
@@ -186,7 +206,7 @@ export default function Dashboard() {
           onClick={() => navigate('/log')}
           className="flex-shrink-0 inline-flex items-center gap-1.5 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded-full transition-colors"
         >
-          Submit a note <ChevronRight className="w-4 h-4" />
+          Log Activity <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
@@ -261,13 +281,60 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Today's Hit List — rep view */}
+      {!isOwner && !isGM && (hitList ?? []).length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-xl font-serif font-semibold text-foreground">Today's hit list</h2>
+            <button
+              onClick={() => navigate('/route')}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Full route ↗
+            </button>
+          </div>
+          <div className="bg-card border border-border rounded-xl divide-y divide-border">
+            {(hitList ?? []).map(contact => {
+              const overdue = new Date(contact.next_visit_due_at ?? '') < new Date()
+              return (
+                <button
+                  key={contact.id}
+                  onClick={() => navigate(`/contacts/${contact.id}`)}
+                  className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex-shrink-0">
+                    {overdue
+                      ? <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                      : <MapPin className="w-3.5 h-3.5 text-primary" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-foreground truncate">
+                      {fullName(contact) || contact.company || 'Unnamed'}
+                    </div>
+                    {contact.company && fullName(contact) && (
+                      <div className="text-xs text-muted-foreground truncate">{contact.company}</div>
+                    )}
+                  </div>
+                  {contact.priority === 'high' && (
+                    <span className="text-[9px] text-red-400 border border-red-400/30 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                      High
+                    </span>
+                  )}
+                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Recent notes feed */}
       <div>
         <h2 className="text-xl font-serif font-semibold text-foreground mb-4">Recent notes</h2>
         <div className="bg-card border border-border rounded-xl divide-y divide-border">
           {(recentFeed ?? []).length === 0 ? (
             <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-              No notes yet. Hit <strong className="text-foreground">Submit a note</strong> to log your first contact.
+              No notes yet. Hit <strong className="text-foreground">Log Activity</strong> to record your first touch.
             </div>
           ) : (
             (recentFeed ?? []).map(a => {

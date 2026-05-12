@@ -1,43 +1,35 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
-import { fullName, formatDate, isOverdue, cn, PRIORITY_COLORS } from '@/lib/utils'
-import { Search, Plus, Phone, Mail, AlertCircle, CheckCircle } from 'lucide-react'
-import type { Contact, COICategory, Priority } from '@/types'
+import { fullName, formatDate, isOverdue, cn } from '@/lib/utils'
+import { Search, Plus, AlertCircle, CheckCircle, ChevronRight } from 'lucide-react'
+import type { Contact, COICategory, Priority, ERPStatus } from '@/types'
+import { ERP_STATUS_LABELS, ERP_STATUS_COLORS } from '@/types'
 
 interface ContactFormData {
   first_name: string
   last_name: string
   company: string
-  title: string
-  email: string
   phone: string
-  phone_mobile: string
-  address: string
   city: string
-  state: string
   category_id: string
   location_id: string
-  priority: Priority
-  visit_frequency_days: string
-  notes: string
 }
 
 const EMPTY_FORM: ContactFormData = {
-  first_name: '', last_name: '', company: '', title: '',
-  email: '', phone: '', phone_mobile: '',
-  address: '', city: '', state: 'TX',
-  category_id: '', location_id: '',
-  priority: 'medium', visit_frequency_days: '',
-  notes: '',
+  first_name: '', last_name: '', company: '',
+  phone: '', city: '', category_id: '', location_id: '',
 }
 
 export default function Contacts() {
   const { profile, isOwner, isGM } = useAuth()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [erpFilter, setErpFilter] = useState<ERPStatus | 'all'>('all')
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<ContactFormData>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
@@ -69,7 +61,7 @@ export default function Contacts() {
         .order('last_name', { ascending: true })
 
       if (!isOwner && !isGM && profile?.id) q = q.eq('assigned_rep_id', profile.id)
-      else if ((isGM) && profile?.location_id) q = q.eq('location_id', profile.location_id)
+      else if (isGM && profile?.location_id) q = q.eq('location_id', profile.location_id)
 
       const { data } = await q
       return (data ?? []) as Contact[]
@@ -83,17 +75,15 @@ export default function Contacts() {
       (v) => v?.toLowerCase().includes(s)
     )
     const matchesCategory = categoryFilter === 'all' || c.category_id === categoryFilter
-    return matchesSearch && matchesCategory
+    const matchesErp = erpFilter === 'all' || (c.erp_status ?? 'not_introduced') === erpFilter
+    return matchesSearch && matchesCategory && matchesErp
   })
 
   async function handleSave() {
     setSaving(true)
     setSaveError(null)
     const categoryObj = categories?.find(c => c.id === form.category_id)
-    const freqDays = form.visit_frequency_days
-      ? parseInt(form.visit_frequency_days)
-      : categoryObj?.default_visit_frequency_days ?? 30
-
+    const freqDays = categoryObj?.default_visit_frequency_days ?? 30
     const nextVisit = new Date()
     nextVisit.setDate(nextVisit.getDate() + freqDays)
 
@@ -104,18 +94,14 @@ export default function Contacts() {
       first_name: form.first_name || null,
       last_name: form.last_name || null,
       company: form.company || null,
-      title: form.title || null,
-      email: form.email || null,
       phone: form.phone || null,
-      phone_mobile: form.phone_mobile || null,
-      address: form.address || null,
       city: form.city || null,
-      state: form.state || 'TX',
+      state: 'TX',
       assigned_rep_id: profile?.id,
       visit_frequency_days: freqDays,
       next_visit_due_at: nextVisit.toISOString(),
-      priority: form.priority,
-      notes: form.notes || null,
+      priority: 'medium' as Priority,
+      erp_status: 'not_introduced' as ERPStatus,
       tags: [],
     }
 
@@ -148,9 +134,9 @@ export default function Contacts() {
         </button>
       </div>
 
-      {/* Search + filter */}
-      <div className="flex gap-2 mb-4">
-        <div className="relative flex-1">
+      {/* Search + filters */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <div className="relative flex-1 min-w-44">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             value={search}
@@ -169,6 +155,16 @@ export default function Contacts() {
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
+        <select
+          value={erpFilter}
+          onChange={(e) => setErpFilter(e.target.value as ERPStatus | 'all')}
+          className="px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        >
+          <option value="all">All ERP</option>
+          {(Object.keys(ERP_STATUS_LABELS) as ERPStatus[]).map(s => (
+            <option key={s} value={s}>{ERP_STATUS_LABELS[s]}</option>
+          ))}
+        </select>
       </div>
 
       {/* Contact list */}
@@ -184,11 +180,16 @@ export default function Contacts() {
         ) : (
           filtered.map((contact) => {
             const overdue = isOverdue(contact.next_visit_due_at)
+            const erpStatus = contact.erp_status ?? 'not_introduced'
             return (
-              <div key={contact.id} className={cn(
-                'bg-card border rounded-xl p-4 flex items-start gap-3',
-                overdue ? 'border-amber-400/20' : 'border-border'
-              )}>
+              <button
+                key={contact.id}
+                onClick={() => navigate(`/contacts/${contact.id}`)}
+                className={cn(
+                  'w-full text-left bg-card border rounded-xl p-4 flex items-start gap-3 hover:border-foreground/20 transition-colors group',
+                  overdue ? 'border-amber-400/20' : 'border-border'
+                )}
+              >
                 {/* Avatar */}
                 <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-xs font-semibold text-muted-foreground">
                   {(contact.first_name?.[0] ?? contact.company?.[0] ?? '?').toUpperCase()}
@@ -197,10 +198,17 @@ export default function Contacts() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="text-sm font-semibold text-foreground">{fullName(contact)}</span>
-                    <span className={cn(
-                      'text-[10px] px-1.5 py-0.5 rounded border',
-                      PRIORITY_COLORS[contact.priority]
-                    )}>{contact.priority}</span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {erpStatus !== 'not_introduced' && (
+                        <span className={cn(
+                          'text-[9px] px-1.5 py-0.5 rounded border leading-none',
+                          ERP_STATUS_COLORS[erpStatus]
+                        )}>
+                          {ERP_STATUS_LABELS[erpStatus]}
+                        </span>
+                      )}
+                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </div>
                   </div>
 
                   {contact.company && (
@@ -220,31 +228,19 @@ export default function Contacts() {
                       {overdue ? <AlertCircle className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
                       Next: {formatDate(contact.next_visit_due_at)}
                     </span>
-                    {contact.phone && (
-                      <a href={`tel:${contact.phone}`} className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        {contact.phone}
-                      </a>
-                    )}
-                    {contact.email && (
-                      <a href={`mailto:${contact.email}`} className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-1 truncate">
-                        <Mail className="w-3 h-3" />
-                        {contact.email}
-                      </a>
-                    )}
                   </div>
                 </div>
-              </div>
+              </button>
             )
           })
         )}
       </div>
 
-      {/* Add Contact Modal */}
+      {/* Add Contact Modal — slim 5-field form */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70">
-          <div className="bg-card border border-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="px-5 py-4 border-b border-border flex items-center justify-between sticky top-0 bg-card">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-sm">
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
               <h2 className="text-base font-semibold text-foreground">New Contact</h2>
               <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground text-lg leading-none">×</button>
             </div>
@@ -254,58 +250,59 @@ export default function Contacts() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-muted-foreground mb-1">First name</label>
-                  <input value={form.first_name} onChange={e => setForm(f => ({...f, first_name: e.target.value}))}
-                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                  <input
+                    autoFocus
+                    value={form.first_name}
+                    onChange={e => setForm(f => ({...f, first_name: e.target.value}))}
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs text-muted-foreground mb-1">Last name</label>
-                  <input value={form.last_name} onChange={e => setForm(f => ({...f, last_name: e.target.value}))}
-                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                  <input
+                    value={form.last_name}
+                    onChange={e => setForm(f => ({...f, last_name: e.target.value}))}
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs text-muted-foreground mb-1">Company</label>
-                <input value={form.company} onChange={e => setForm(f => ({...f, company: e.target.value}))}
-                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                <input
+                  value={form.company}
+                  onChange={e => setForm(f => ({...f, company: e.target.value}))}
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
               </div>
 
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">Title</label>
-                <input value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))}
-                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Phone</label>
-                  <input type="tel" value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))}
-                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
-                </div>
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Mobile</label>
-                  <input type="tel" value={form.phone_mobile} onChange={e => setForm(f => ({...f, phone_mobile: e.target.value}))}
-                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs text-muted-foreground mb-1">Email</label>
-                <input type="email" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))}
-                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                <label className="block text-xs text-muted-foreground mb-1">Phone</label>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={e => setForm(f => ({...f, phone: e.target.value}))}
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-muted-foreground mb-1">City</label>
-                  <input value={form.city} onChange={e => setForm(f => ({...f, city: e.target.value}))}
-                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                  <input
+                    value={form.city}
+                    onChange={e => setForm(f => ({...f, city: e.target.value}))}
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs text-muted-foreground mb-1">COI Type</label>
-                  <select value={form.category_id} onChange={e => setForm(f => ({...f, category_id: e.target.value}))}
-                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
-                    <option value="">Select type…</option>
+                  <select
+                    value={form.category_id}
+                    onChange={e => setForm(f => ({...f, category_id: e.target.value}))}
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Select…</option>
                     {(categories ?? []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
@@ -314,38 +311,18 @@ export default function Contacts() {
               {(isOwner || isGM) && (
                 <div>
                   <label className="block text-xs text-muted-foreground mb-1">Market</label>
-                  <select value={form.location_id} onChange={e => setForm(f => ({...f, location_id: e.target.value}))}
-                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
+                  <select
+                    value={form.location_id}
+                    onChange={e => setForm(f => ({...f, location_id: e.target.value}))}
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
                     <option value="">Select market…</option>
-                    {(locations ?? []).map((l: {id: string; name: string}) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    {(locations ?? []).map((l: {id: string; name: string}) => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
                   </select>
                 </div>
               )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Priority</label>
-                  <select value={form.priority} onChange={e => setForm(f => ({...f, priority: e.target.value as Priority}))}
-                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Visit every (days)</label>
-                  <input type="number" placeholder="e.g. 14" value={form.visit_frequency_days}
-                    onChange={e => setForm(f => ({...f, visit_frequency_days: e.target.value}))}
-                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs text-muted-foreground mb-1">Notes</label>
-                <textarea rows={3} value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))}
-                  placeholder="Key details about this contact…"
-                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none" />
-              </div>
             </div>
 
             {saveError && (
@@ -355,13 +332,19 @@ export default function Contacts() {
                 </div>
               </div>
             )}
-            <div className="px-5 py-4 border-t border-border flex gap-2 sticky bottom-0 bg-card">
-              <button onClick={() => { setShowForm(false); setSaveError(null) }}
-                className="flex-1 py-2 text-sm text-muted-foreground hover:text-foreground bg-muted rounded-lg transition-colors">
+
+            <div className="px-5 py-4 border-t border-border flex gap-2">
+              <button
+                onClick={() => { setShowForm(false); setSaveError(null) }}
+                className="flex-1 py-2.5 text-sm text-muted-foreground hover:text-foreground bg-muted rounded-lg transition-colors"
+              >
                 Cancel
               </button>
-              <button onClick={handleSave} disabled={saving}
-                className="flex-1 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 disabled:opacity-50 rounded-lg transition-colors">
+              <button
+                onClick={handleSave}
+                disabled={saving || (!form.first_name && !form.last_name && !form.company)}
+                className="flex-1 py-2.5 text-sm font-medium text-white bg-primary hover:bg-primary/90 disabled:opacity-50 rounded-lg transition-colors"
+              >
                 {saving ? 'Saving…' : 'Save contact'}
               </button>
             </div>

@@ -18,7 +18,7 @@ import { getInitials } from '@/lib/utils'
 
 const REP_NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/log',       label: 'Submit a Note', icon: Mic },
+  { to: '/log',       label: 'Log Activity', icon: Mic },
   { to: '/ledger',    label: 'Master Ledger', icon: BookOpen },
   { to: '/weekly',    label: 'Weekly Summary', icon: CalendarDays },
   { to: '/guide',     label: 'Quick Guide', icon: BookOpenCheck },

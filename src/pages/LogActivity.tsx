@@ -10,7 +10,8 @@ import {
   Mic, Square, CheckCircle2, AlertCircle,
   Search, ChevronDown, Send,
 } from 'lucide-react'
-import type { Contact, ParsedNote } from '@/types'
+import type { Contact, ParsedNote, OutcomeType } from '@/types'
+import { OUTCOME_TYPE_LABELS } from '@/types'
 
 type Step = 'input' | 'parsing' | 'preview' | 'saved'
 
@@ -34,6 +35,7 @@ export default function LogActivity() {
   const [selectedContactId, setSelectedContactId] = useState<string>(presetContactId ?? '')
   const [contactSearch, setContactSearch] = useState('')
   const [showContactPicker, setShowContactPicker] = useState(false)
+  const [outcomeType, setOutcomeType] = useState<OutcomeType | ''>('')
 
   const { data: contacts } = useQuery({
     queryKey: ['contacts-picker', profile?.id],
@@ -85,6 +87,7 @@ export default function LogActivity() {
         rep_id: profile.id,
         location_id: profile.location_id,
         type: parsed.activity_type ?? 'visit',
+        outcome_type: outcomeType || parsed.outcome_type || null,
         outcome: parsed.outcome,
         notes: parsed.notes,
         raw_transcript: manualText || voiceRecorder.transcript,
@@ -180,10 +183,11 @@ export default function LogActivity() {
 
         <div className="bg-card border border-border rounded-2xl divide-y divide-border mb-5">
           {[
-            { label: 'Contact',    value: parsed.contact_name },
-            { label: 'Company',    value: parsed.company },
-            { label: 'Type',       value: parsed.activity_type },
-            { label: 'Outcome',    value: parsed.outcome },
+            { label: 'Contact',      value: parsed.contact_name },
+            { label: 'Company',      value: parsed.company },
+            { label: 'Type',         value: parsed.activity_type },
+            { label: 'Visit type',   value: outcomeType ? OUTCOME_TYPE_LABELS[outcomeType as OutcomeType] : (parsed.outcome_type ? OUTCOME_TYPE_LABELS[parsed.outcome_type] : null) },
+            { label: 'Outcome',      value: parsed.outcome },
             { label: 'Notes',      value: parsed.notes },
             { label: 'Follow-up',  value: parsed.follow_up_date ? `${formatDate(parsed.follow_up_date)}${parsed.follow_up_action ? ' — ' + parsed.follow_up_action : ''}` : null },
             { label: 'Deal value', value: parsed.deal_value ? `$${parsed.deal_value.toLocaleString()}` : null },
@@ -291,6 +295,20 @@ export default function LogActivity() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Outcome type picker */}
+          <div className="mb-4">
+            <select
+              value={outcomeType}
+              onChange={e => setOutcomeType(e.target.value as OutcomeType | '')}
+              className="w-full px-3 py-2 bg-muted border border-border rounded-full text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-foreground/20 appearance-none cursor-pointer"
+            >
+              <option value="">Outcome type (optional)</option>
+              {(Object.entries(OUTCOME_TYPE_LABELS) as [OutcomeType, string][]).map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+            </select>
           </div>
 
           {/* Voice button */}

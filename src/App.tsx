@@ -13,6 +13,7 @@ import WeeklySummary from '@/pages/WeeklySummary'
 import QuickGuide from '@/pages/QuickGuide'
 import FlaggedQueue from '@/pages/FlaggedQueue'
 import Team from '@/pages/Team'
+import ContactDetail from '@/pages/ContactDetail'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="guide" element={<QuickGuide />} />
           <Route path="route" element={<MyRoute />} />
           <Route path="contacts" element={<Contacts />} />
+          <Route path="contacts/:id" element={<ContactDetail />} />
           <Route path="sales" element={<Sales />} />
           <Route path="markets" element={<Markets />} />
           <Route path="flagged" element={<FlaggedQueue />} />

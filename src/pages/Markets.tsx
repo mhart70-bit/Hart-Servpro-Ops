@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
-import { formatCurrency } from '@/lib/utils'
-import { BarChart2, Activity, DollarSign, Flag, Users, AlertTriangle } from 'lucide-react'
+import { formatCurrency, cn } from '@/lib/utils'
+import { BarChart2, Activity, DollarSign, Flag, Users, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react'
 import { startOfMonth } from 'date-fns'
 
 interface MarketStat {
@@ -15,9 +16,21 @@ interface MarketStat {
   rep_count: number
 }
 
+interface RepProfile {
+  id: string
+  full_name: string | null
+  location_id: string | null
+}
+
+interface RepActivityRow {
+  rep_id: string | null
+  location_id: string | null
+}
+
 export default function Markets() {
   const { isOwner, isGM } = useAuth()
   const monthStart = startOfMonth(new Date()).toISOString()
+  const [expandedMarket, setExpandedMarket] = useState<string | null>(null)
 
   const { data: locations, isLoading: locLoading } = useQuery({
     queryKey: ['locations'],
@@ -72,10 +85,24 @@ export default function Markets() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('location_id')
+        .select('id, full_name, location_id')
         .eq('role', 'rep')
       if (error) throw error
-      return data ?? []
+      return (data ?? []) as RepProfile[]
+    },
+    enabled: isOwner || isGM,
+  })
+
+  // Per-rep activity this month
+  const { data: repActivities } = useQuery({
+    queryKey: ['markets-rep-acts', monthStart],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('activities')
+        .select('rep_id, location_id')
+        .gte('occurred_at', monthStart)
+      if (error) throw error
+      return (data ?? []) as RepActivityRow[]
     },
     enabled: isOwner || isGM,
   })
@@ -172,6 +199,12 @@ export default function Markets() {
             const activityPct = totals.activities_mtd > 0
               ? Math.round((m.activities_mtd / totals.activities_mtd) * 100)
               : 0
+            const isExpanded = expandedMarket === m.location_id
+            const locationReps = (repsByLocation ?? []).filter(r => r.location_id === m.location_id)
+            const repRows = locationReps.map(rep => ({
+              name: rep.full_name ?? 'Unknown',
+              acts: (repActivities ?? []).filter(a => a.rep_id === rep.id).length,
+            })).sort((a, b) => b.acts - a.acts)
 
             return (
               <div key={m.location_id} className="bg-card border border-border rounded-2xl p-6">
@@ -220,7 +253,7 @@ export default function Markets() {
                 </div>
 
                 {/* Activity share bar */}
-                <div>
+                <div className="mb-4">
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Share of activity</span>
                     <span className="text-[10px] text-muted-foreground">{activityPct}%</span>
@@ -232,6 +265,58 @@ export default function Markets() {
                     />
                   </div>
                 </div>
+
+                {/* Rep drill-down toggle */}
+                {repRows.length > 0 && (
+                  <>
+                    <button
+                      onClick={() => setExpandedMarket(isExpanded ? null : m.location_id)}
+                      className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors w-full"
+                    >
+                      <Users className="w-3 h-3" />
+                      <span className="uppercase tracking-widest">Rep breakdown</span>
+                      {isExpanded
+                        ? <ChevronUp className="w-3 h-3 ml-auto" />
+                        : <ChevronDown className="w-3 h-3 ml-auto" />}
+                    </button>
+
+                    {isExpanded && (
+                      <div className="mt-3 border-t border-border pt-3 space-y-2">
+                        {repRows.map((rep, i) => (
+                          <div key={i} className="flex items-center justify-between text-xs">
+                            <span className={cn(
+                              'truncate',
+                              rep.acts === 0 ? 'text-muted-foreground' : 'text-foreground'
+                            )}>
+                              {rep.name}
+                            </span>
+                            <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                              <div className="w-16 h-1 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className={cn(
+                                    'h-full rounded-full',
+                                    rep.acts === 0 ? 'bg-transparent' : 'bg-primary/40'
+                                  )}
+                                  style={{
+                                    width: m.activities_mtd > 0
+                                      ? `${Math.round((rep.acts / m.activities_mtd) * 100)}%`
+                                      : '0%'
+                                  }}
+                                />
+                              </div>
+                              <span className={cn(
+                                'w-6 text-right font-medium tabular-nums',
+                                rep.acts === 0 ? 'text-muted-foreground' : 'text-foreground'
+                              )}>
+                                {rep.acts}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )
           })}
