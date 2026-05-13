@@ -1,13 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
-  MapPin,
   Users,
   Mic,
   TrendingUp,
   BarChart2,
   LogOut,
-  BookOpen,
   CalendarDays,
   BookOpenCheck,
   ShieldAlert,
@@ -19,25 +17,23 @@ import { useAuth } from '@/hooks/useAuth'
 import { getInitials } from '@/lib/utils'
 
 const REP_NAV = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/dashboard', label: 'Dashboard',    icon: LayoutDashboard },
   { to: '/log',       label: 'Log Activity', icon: Mic },
-  { to: '/ledger',    label: 'Master Ledger', icon: BookOpen },
-  { to: '/weekly',    label: 'Weekly Summary', icon: CalendarDays },
-  { to: '/guide',     label: 'Quick Guide', icon: BookOpenCheck },
-]
-
-const ROUTE_NAV = [
-  { to: '/route',    label: 'My Route', icon: MapPin },
-  { to: '/contacts', label: 'Contacts', icon: Users },
-  { to: '/sales',    label: 'Sales Pipeline', icon: TrendingUp },
+  { to: '/contacts',  label: 'My Contacts',  icon: Users },
+  { to: '/sales',     label: 'My Pipeline',  icon: TrendingUp },
+  { to: '/guide',     label: 'Quick Guide',  icon: BookOpenCheck },
 ]
 
 const ADMIN_NAV = [
-  { to: '/markets',       label: 'Markets',       icon: BarChart2 },
-  { to: '/flagged',       label: 'Flagged Queue', icon: ShieldAlert },
-  { to: '/team',          label: 'Team',          icon: UserCog },
-  { to: '/rep-activity',  label: 'Rep Activity',  icon: Activity },
-  { to: '/alerts',        label: 'Alerts',        icon: AlertTriangle },
+  { to: '/dashboard',     label: 'Command Center', icon: LayoutDashboard },
+  { to: '/contacts',      label: 'All Contacts',   icon: Users },
+  { to: '/sales',         label: 'All Deals',      icon: TrendingUp },
+  { to: '/markets',       label: 'Markets',        icon: BarChart2 },
+  { to: '/weekly',        label: 'Weekly Summary', icon: CalendarDays },
+  { to: '/flagged',       label: 'Flagged Queue',  icon: ShieldAlert },
+  { to: '/team',          label: 'Team',           icon: UserCog },
+  { to: '/rep-activity',  label: 'Rep Activity',   icon: Activity },
+  { to: '/alerts',        label: 'Alerts',         icon: AlertTriangle },
 ]
 
 interface SidebarProps {
@@ -72,38 +68,20 @@ export default function Sidebar({ onClose }: SidebarProps) {
 
       {/* Nav */}
       <div className="flex-1 px-3 py-3 overflow-y-auto space-y-0.5">
-        {/* Primary nav */}
-        {REP_NAV.map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={to} onClick={onClose} className={navLinkClass}>
-            <Icon className="w-4 h-4 flex-shrink-0" />
-            {label}
-          </NavLink>
-        ))}
-
-        {/* CRM Tools divider */}
-        <div className="pt-4 pb-1 px-3">
-          <span className="text-[9px] text-sidebar-foreground/30 uppercase tracking-widest">CRM Tools</span>
-        </div>
-        {ROUTE_NAV.map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={to} onClick={onClose} className={navLinkClass}>
-            <Icon className="w-4 h-4 flex-shrink-0" />
-            {label}
-          </NavLink>
-        ))}
-
-        {/* Admin divider */}
-        {(isOwner || isGM) && (
-          <>
-            <div className="pt-4 pb-1 px-3">
-              <span className="text-[9px] text-sidebar-foreground/30 uppercase tracking-widest">Admin</span>
-            </div>
-            {ADMIN_NAV.map(({ to, label, icon: Icon }) => (
-              <NavLink key={to} to={to} onClick={onClose} className={navLinkClass}>
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                {label}
-              </NavLink>
-            ))}
-          </>
+        {(isOwner || isGM) ? (
+          ADMIN_NAV.map(({ to, label, icon: Icon }) => (
+            <NavLink key={to} to={to} onClick={onClose} className={navLinkClass}>
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              {label}
+            </NavLink>
+          ))
+        ) : (
+          REP_NAV.map(({ to, label, icon: Icon }) => (
+            <NavLink key={to} to={to} onClick={onClose} className={navLinkClass}>
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              {label}
+            </NavLink>
+          ))
         )}
       </div>
 

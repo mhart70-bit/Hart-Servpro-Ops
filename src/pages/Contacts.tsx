@@ -4,9 +4,10 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { fullName, formatDate, isOverdue, cn } from '@/lib/utils'
-import { Search, Plus, AlertCircle, CheckCircle, ChevronRight, Download } from 'lucide-react'
+import { Search, Plus, AlertCircle, CheckCircle, ChevronRight, Download, Zap } from 'lucide-react'
 import type { Contact, COICategory, Priority, ERPStatus } from '@/types'
 import { ERP_STATUS_LABELS, ERP_STATUS_COLORS } from '@/types'
+import QuickLogModal from '@/components/QuickLogModal'
 
 function exportContactsCSV(contacts: Contact[]) {
   const headers = [
@@ -60,13 +61,16 @@ export default function Contacts() {
   const { profile, isOwner, isGM } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  type StatusFilter = 'all' | 'overdue' | 'due-week' | 'high-priority'
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [erpFilter, setErpFilter] = useState<ERPStatus | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<ContactFormData>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [quickLogContactId, setQuickLogContactId] = useState<string | undefined>()
 
   const { data: categories } = useQuery({
     queryKey: ['coi-categories'],
@@ -109,7 +113,16 @@ export default function Contacts() {
     )
     const matchesCategory = categoryFilter === 'all' || c.category_id === categoryFilter
     const matchesErp = erpFilter === 'all' || (c.erp_status ?? 'not_introduced') === erpFilter
-    return matchesSearch && matchesCategory && matchesErp
+    const now = new Date()
+    const weekEnd = new Date(); weekEnd.setDate(weekEnd.getDate() + 7)
+    const matchesStatus = (() => {
+      if (statusFilter === 'all') return true
+      if (statusFilter === 'overdue') return c.next_visit_due_at != null && new Date(c.next_visit_due_at) < now
+      if (statusFilter === 'due-week') return c.next_visit_due_at != null && new Date(c.next_visit_due_at) <= weekEnd
+      if (statusFilter === 'high-priority') return c.priority === 'high'
+      return true
+    })()
+    return matchesSearch && matchesCategory && matchesErp && matchesStatus
   })
 
   async function handleSave() {
@@ -180,7 +193,7 @@ export default function Contacts() {
       </div>
 
       {/* Search + filters */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-3">
         <div className="relative flex-1 min-w-44">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
@@ -212,6 +225,28 @@ export default function Contacts() {
         </select>
       </div>
 
+      {/* Filter chips */}
+      <div className="flex flex-wrap gap-1.5 mb-4">
+        {([
+          { value: 'all',           label: 'All' },
+          { value: 'overdue',       label: 'Overdue' },
+          { value: 'due-week',      label: 'Due This Week' },
+          { value: 'high-priority', label: 'High Priority' },
+        ] as { value: StatusFilter; label: string }[]).map(chip => (
+          <button
+            key={chip.value}
+            onClick={() => setStatusFilter(chip.value as StatusFilter)}
+            className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+              statusFilter === chip.value
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'text-muted-foreground border-border hover:border-foreground/30'
+            }`}
+          >
+            {chip.label}
+          </button>
+        ))}
+      </div>
+
       {/* Contact list */}
       <div className="space-y-2">
         {isLoading ? (
@@ -227,33 +262,32 @@ export default function Contacts() {
             const overdue = isOverdue(contact.next_visit_due_at)
             const erpStatus = contact.erp_status ?? 'not_introduced'
             return (
-              <button
+              <div
                 key={contact.id}
-                onClick={() => navigate(`/contacts/${contact.id}`)}
                 className={cn(
-                  'w-full text-left bg-card border rounded-xl p-4 flex items-start gap-3 hover:border-foreground/20 transition-colors group',
+                  'bg-card border rounded-xl p-4 flex items-start gap-3 group transition-colors hover:border-foreground/20',
                   overdue ? 'border-amber-400/20' : 'border-border'
                 )}
               >
                 {/* Avatar */}
-                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-xs font-semibold text-muted-foreground">
+                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-xs font-semibold text-muted-foreground mt-0.5">
                   {(contact.first_name?.[0] ?? contact.company?.[0] ?? '?').toUpperCase()}
                 </div>
 
-                <div className="flex-1 min-w-0">
+                <button
+                  className="flex-1 min-w-0 text-left"
+                  onClick={() => navigate(`/contacts/${contact.id}`)}
+                >
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="text-sm font-semibold text-foreground">{fullName(contact)}</span>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {erpStatus !== 'not_introduced' && (
-                        <span className={cn(
-                          'text-[9px] px-1.5 py-0.5 rounded border leading-none',
-                          ERP_STATUS_COLORS[erpStatus]
-                        )}>
-                          {ERP_STATUS_LABELS[erpStatus]}
-                        </span>
-                      )}
-                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    </div>
+                    {erpStatus !== 'not_introduced' && (
+                      <span className={cn(
+                        'text-[9px] px-1.5 py-0.5 rounded border leading-none flex-shrink-0',
+                        ERP_STATUS_COLORS[erpStatus]
+                      )}>
+                        {ERP_STATUS_LABELS[erpStatus]}
+                      </span>
+                    )}
                   </div>
 
                   {contact.company && (
@@ -263,7 +297,7 @@ export default function Contacts() {
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
                     {contact.category && (
                       <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
-                        {contact.category.name}
+                        {(contact.category as COICategory | null)?.name}
                       </span>
                     )}
                     <span className={cn(
@@ -274,8 +308,20 @@ export default function Contacts() {
                       Next: {formatDate(contact.next_visit_due_at)}
                     </span>
                   </div>
+                </button>
+
+                <div className="flex items-center gap-1.5 flex-shrink-0 ml-1">
+                  <button
+                    onClick={() => setQuickLogContactId(contact.id)}
+                    className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-[10px] text-primary border border-primary/30 px-2 py-1 rounded-full transition-opacity hover:bg-primary/10"
+                    title="Log visit"
+                  >
+                    <Zap className="w-3 h-3" />
+                    Log
+                  </button>
+                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
-              </button>
+              </div>
             )
           })
         )}
@@ -396,6 +442,12 @@ export default function Contacts() {
           </div>
         </div>
       )}
+
+      <QuickLogModal
+        open={quickLogContactId != null}
+        onClose={() => setQuickLogContactId(undefined)}
+        defaultContactId={quickLogContactId}
+      />
     </div>
   )
 }

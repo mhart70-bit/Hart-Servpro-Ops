@@ -1,11 +1,13 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { formatCurrency, formatRelative, fullName } from '@/lib/utils'
 import { startOfMonth, startOfWeek } from 'date-fns'
-import { FileText, TrendingUp, Flag, AlertTriangle, ChevronRight, MapPin, AlertCircle } from 'lucide-react'
+import { FileText, TrendingUp, Flag, AlertTriangle, ChevronRight, MapPin, AlertCircle, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Contact } from '@/types'
+import QuickLogModal from '@/components/QuickLogModal'
 
 const MARKETS = ['Amarillo', 'Abilene', 'Sugar Land', 'San Angelo', 'Victoria']
 
@@ -36,6 +38,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const monthStart = startOfMonth(new Date()).toISOString()
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString()
+  const [showQuickLog, setShowQuickLog] = useState(false)
 
   const firstName = profile?.full_name?.split(' ')[0] ?? null
 
@@ -122,7 +125,7 @@ export default function Dashboard() {
     enabled: !!(isOwner || isGM),
   })
 
-  // Today's hit list (rep view only)
+  // Today's hit list (rep view only) — overdue + due today
   const { data: hitList } = useQuery({
     queryKey: ['dash-hitlist', profile?.id],
     queryFn: async () => {
@@ -135,7 +138,7 @@ export default function Dashboard() {
         .eq('assigned_rep_id', profile!.id)
         .lte('next_visit_due_at', todayEnd.toISOString())
         .order('next_visit_due_at', { ascending: true })
-        .limit(5)
+        .limit(20)
       return (data ?? []) as unknown as Contact[]
     },
     enabled: !!profile && !isOwner && !isGM,
@@ -281,55 +284,80 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Today's Hit List — rep view */}
-      {!isOwner && !isGM && (hitList ?? []).length > 0 && (
-        <div className="mb-8">
-          <div className="flex items-baseline justify-between mb-3">
-            <h2 className="text-xl font-serif font-semibold text-foreground">Today's hit list</h2>
+      {/* Rep view: Overdue + Due Today sections */}
+      {!isOwner && !isGM && (() => {
+        const todayStart = new Date()
+        todayStart.setHours(0, 0, 0, 0)
+        const overdue = (hitList ?? []).filter(c => new Date(c.next_visit_due_at ?? '') < todayStart)
+        const dueToday = (hitList ?? []).filter(c => new Date(c.next_visit_due_at ?? '') >= todayStart)
+
+        const ContactRow = ({ contact, badge }: { contact: Contact; badge?: 'overdue' | 'today' }) => (
+          <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors group">
+            <div className="flex-shrink-0">
+              {badge === 'overdue'
+                ? <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                : <MapPin className="w-3.5 h-3.5 text-primary" />}
+            </div>
             <button
-              onClick={() => navigate('/route')}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => navigate(`/contacts/${contact.id}`)}
+              className="flex-1 min-w-0 text-left"
             >
-              Full route ↗
+              <div className="text-sm font-medium text-foreground truncate">
+                {fullName(contact) || contact.company || 'Unnamed'}
+              </div>
+              {contact.company && fullName(contact) && (
+                <div className="text-xs text-muted-foreground truncate">{contact.company}</div>
+              )}
             </button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {contact.priority === 'high' && (
+                <span className="text-[9px] text-red-400 border border-red-400/30 px-1.5 py-0.5 rounded-full">
+                  High
+                </span>
+              )}
+              <button
+                onClick={() => setShowQuickLog(true)}
+                className="opacity-0 group-hover:opacity-100 text-[10px] text-primary border border-primary/30 px-2 py-0.5 rounded-full transition-opacity hover:bg-primary/10"
+              >
+                Log
+              </button>
+              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+            </div>
           </div>
-          <div className="bg-card border border-border rounded-xl divide-y divide-border">
-            {(hitList ?? []).map(contact => {
-              const overdue = new Date(contact.next_visit_due_at ?? '') < new Date()
-              return (
-                <button
-                  key={contact.id}
-                  onClick={() => navigate(`/contacts/${contact.id}`)}
-                  className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex-shrink-0">
-                    {overdue
-                      ? <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-                      : <MapPin className="w-3.5 h-3.5 text-primary" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-foreground truncate">
-                      {fullName(contact) || contact.company || 'Unnamed'}
-                    </div>
-                    {contact.company && fullName(contact) && (
-                      <div className="text-xs text-muted-foreground truncate">{contact.company}</div>
-                    )}
-                  </div>
-                  {contact.priority === 'high' && (
-                    <span className="text-[9px] text-red-400 border border-red-400/30 px-1.5 py-0.5 rounded-full flex-shrink-0">
-                      High
-                    </span>
-                  )}
-                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
+        )
+
+        return (
+          <>
+            {overdue.length > 0 && (
+              <div className="mb-6">
+                <h2 className="text-xl font-serif font-semibold text-foreground mb-3">
+                  Overdue
+                  <span className="ml-2 text-sm font-sans font-normal text-amber-400">{overdue.length}</span>
+                </h2>
+                <div className="bg-card border border-amber-400/20 rounded-xl divide-y divide-border overflow-hidden">
+                  {overdue.map(c => <ContactRow key={c.id} contact={c} badge="overdue" />)}
+                </div>
+              </div>
+            )}
+            {dueToday.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-xl font-serif font-semibold text-foreground mb-3">Due today</h2>
+                <div className="bg-card border border-border rounded-xl divide-y divide-border overflow-hidden">
+                  {dueToday.map(c => <ContactRow key={c.id} contact={c} badge="today" />)}
+                </div>
+              </div>
+            )}
+            {overdue.length === 0 && dueToday.length === 0 && (
+              <div className="mb-8 bg-card border border-border rounded-xl p-8 text-center">
+                <p className="text-sm text-muted-foreground">All caught up — no visits due today.</p>
+              </div>
+            )}
+          </>
+        )
+      })()}
 
       {/* Recent notes feed */}
-      <div>
+      <div className="pb-20 lg:pb-0">
         <h2 className="text-xl font-serif font-semibold text-foreground mb-4">Recent notes</h2>
         <div className="bg-card border border-border rounded-xl divide-y divide-border">
           {(recentFeed ?? []).length === 0 ? (
@@ -365,6 +393,19 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Floating action button — rep view */}
+      {!isOwner && !isGM && (
+        <button
+          onClick={() => setShowQuickLog(true)}
+          className="fixed bottom-6 right-6 lg:bottom-8 lg:right-8 w-14 h-14 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-xl flex items-center justify-center z-10 transition-colors"
+          title="Log Activity"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
+
+      <QuickLogModal open={showQuickLog} onClose={() => setShowQuickLog(false)} />
     </div>
   )
 }
