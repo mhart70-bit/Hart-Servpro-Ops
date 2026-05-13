@@ -86,7 +86,10 @@ export default function WeeklySummary() {
         .lte('next_visit_due_at', weekEnd.toISOString())
       if (isGM && profile?.location_id) q = q.eq('location_id', profile.location_id)
       const { data } = await q
-      return (data ?? []) as { id: string; first_name: string | null; last_name: string | null; company: string | null; assigned_rep: { full_name: string | null } | null }[]
+      return (data ?? []).map((r: { id: unknown; first_name: unknown; last_name: unknown; company: unknown; assigned_rep: unknown }) => ({
+        ...r,
+        assigned_rep: Array.isArray(r.assigned_rep) ? (r.assigned_rep[0] ?? null) : r.assigned_rep,
+      })) as { id: string; first_name: string | null; last_name: string | null; company: string | null; assigned_rep: { full_name: string | null } | null }[]
     },
     enabled: !!(isOwner || isGM),
   })
@@ -104,7 +107,10 @@ export default function WeeklySummary() {
         .lte('updated_at', staleErpDate)
       if (isGM && profile?.location_id) q = q.eq('location_id', profile.location_id)
       const { data } = await q
-      return (data ?? []) as { id: string; first_name: string | null; last_name: string | null; company: string | null; updated_at: string; assigned_rep: { full_name: string | null } | null }[]
+      return (data ?? []).map((r: { id: unknown; first_name: unknown; last_name: unknown; company: unknown; updated_at: unknown; assigned_rep: unknown }) => ({
+        ...r,
+        assigned_rep: Array.isArray(r.assigned_rep) ? (r.assigned_rep[0] ?? null) : r.assigned_rep,
+      })) as { id: string; first_name: string | null; last_name: string | null; company: string | null; updated_at: string; assigned_rep: { full_name: string | null } | null }[]
     },
     enabled: !!(isOwner || isGM),
   })
@@ -237,14 +243,18 @@ export default function WeeklySummary() {
                 </p>
               </div>
               <div className="space-y-1.5">
-                {zeroNoteReps.map((rep: { id: string; full_name: string | null; location?: { name: string | null } | null }) => (
+                {zeroNoteReps.map((rep) => {
+                  const loc = rep.location
+                  const locName = Array.isArray(loc) ? (loc[0]?.name ?? '—') : (loc as { name: string | null } | null)?.name ?? '—'
+                  return (
                   <div key={rep.id} className="flex items-center justify-between text-sm">
                     <span className="text-foreground">{rep.full_name ?? 'Unknown'}</span>
                     <span className="text-xs text-muted-foreground">
-                      {(rep.location as { name: string | null } | null)?.name ?? '—'}
+                      {locName}
                     </span>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}

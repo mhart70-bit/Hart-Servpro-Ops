@@ -143,7 +143,6 @@ export async function geocodeContact(contact: {
 }): Promise<LatLng | null> {
   if (!contact.address && !contact.city) return null
 
-  const addressStr = [contact.address, contact.city].filter(Boolean).join(', ')
   return geocodeAddress(
     contact.address ?? '',
     contact.city ?? '',
