@@ -171,6 +171,8 @@ export default function Sales() {
             const stageIdx = DEAL_STAGE_ORDER.indexOf(deal.stage)
             const canAdvance = stageIdx >= 0 && stageIdx < DEAL_STAGE_ORDER.length - 1
             const contactLabel = deal.contact ? fullName(deal.contact) : null
+            const daysInStage = Math.floor((Date.now() - new Date(deal.updated_at ?? deal.created_at).getTime()) / 86400000)
+            const stageAlert = daysInStage >= 30 ? 'text-red-400' : daysInStage >= 14 ? 'text-amber-400' : 'text-muted-foreground'
 
             return (
               <div key={deal.id} className="bg-card border border-border rounded-xl p-4">
@@ -188,6 +190,9 @@ export default function Sales() {
                     {(isOwner || isGM) && deal.rep?.full_name && (
                       <p className="text-xs text-muted-foreground/60">{deal.rep.full_name} · {deal.location?.name}</p>
                     )}
+                    <p className={`text-[10px] mt-0.5 ${stageAlert}`}>
+                      {daysInStage === 0 ? 'In stage: today' : `In stage: ${daysInStage}d`}
+                    </p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <div className="text-base font-bold text-foreground">{formatCurrency(deal.deal_value)}</div>

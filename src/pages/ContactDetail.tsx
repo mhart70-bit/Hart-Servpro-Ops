@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -7,7 +7,7 @@ import { fullName, formatDate, formatCurrency, isOverdue, cn } from '@/lib/utils
 import {
   ChevronLeft, Phone, Mail, MapPin, Plus,
   AlertCircle, CheckCircle, Clock, TrendingUp,
-  FileText, Mic, PhoneCall, AtSign, Star,
+  FileText, Mic, PhoneCall, AtSign, Star, ArrowRight,
 } from 'lucide-react'
 import type { Contact, Activity, Deal, ERPStatus } from '@/types'
 import { ERP_STATUS_LABELS, ERP_STATUS_COLORS, OUTCOME_TYPE_LABELS } from '@/types'
@@ -35,6 +35,8 @@ export default function ContactDetail() {
   const { profile, isOwner, isGM } = useAuth()
   const queryClient = useQueryClient()
   const [erpUpdating, setErpUpdating] = useState(false)
+  const [nextStepSaving, setNextStepSaving] = useState(false)
+  const nextStepRef = useRef<HTMLTextAreaElement>(null)
 
   // ── Contact ──────────────────────────────────────────────
   const { data: contact, isLoading: contactLoading } = useQuery({
@@ -99,6 +101,17 @@ export default function ContactDetail() {
     },
     onError: () => setErpUpdating(false),
   })
+
+  // ── Next Step save ───────────────────────────────────────
+  async function handleNextStepBlur() {
+    const value = nextStepRef.current?.value ?? ''
+    const current = contact?.notes ?? ''
+    if (value === current) return
+    setNextStepSaving(true)
+    await supabase.from('contacts').update({ notes: value || null }).eq('id', id!)
+    queryClient.invalidateQueries({ queryKey: ['contact', id] })
+    setNextStepSaving(false)
+  }
 
   // ── Loading ──────────────────────────────────────────────
   if (contactLoading || !contact) {
@@ -303,13 +316,25 @@ export default function ContactDetail() {
         </div>
       )}
 
-      {/* Notes */}
-      {contact.notes && (
-        <div className="bg-card border border-border rounded-2xl p-5 mb-4">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2">Notes</p>
-          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{contact.notes}</p>
+      {/* Next Step — always visible, auto-saves on blur */}
+      <div className="bg-card border border-primary/30 rounded-2xl p-5 mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <ArrowRight className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+          <p className="text-[10px] text-primary uppercase tracking-widest font-semibold">Next Step</p>
+          {nextStepSaving && (
+            <span className="ml-auto text-[10px] text-muted-foreground">Saving…</span>
+          )}
         </div>
-      )}
+        <textarea
+          ref={nextStepRef}
+          key={contact.id}
+          defaultValue={contact.notes ?? ''}
+          onBlur={handleNextStepBlur}
+          rows={2}
+          placeholder="What's the next action for this contact?"
+          className="w-full bg-transparent text-sm text-foreground placeholder-muted-foreground resize-none focus:outline-none leading-relaxed"
+        />
+      </div>
 
       {/* Activity history */}
       <div className="bg-card border border-border rounded-2xl p-5 mb-4">

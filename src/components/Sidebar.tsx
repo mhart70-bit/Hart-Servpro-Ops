@@ -12,6 +12,8 @@ import {
   BookOpenCheck,
   ShieldAlert,
   UserCog,
+  AlertTriangle,
+  Activity,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { getInitials } from '@/lib/utils'
@@ -31,9 +33,11 @@ const ROUTE_NAV = [
 ]
 
 const ADMIN_NAV = [
-  { to: '/markets', label: 'Markets', icon: BarChart2 },
-  { to: '/flagged', label: 'Flagged Queue', icon: ShieldAlert },
-  { to: '/team',    label: 'Team', icon: UserCog },
+  { to: '/markets',       label: 'Markets',       icon: BarChart2 },
+  { to: '/flagged',       label: 'Flagged Queue', icon: ShieldAlert },
+  { to: '/team',          label: 'Team',          icon: UserCog },
+  { to: '/rep-activity',  label: 'Rep Activity',  icon: Activity },
+  { to: '/alerts',        label: 'Alerts',        icon: AlertTriangle },
 ]
 
 interface SidebarProps {

@@ -4,9 +4,42 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { fullName, formatDate, isOverdue, cn } from '@/lib/utils'
-import { Search, Plus, AlertCircle, CheckCircle, ChevronRight } from 'lucide-react'
+import { Search, Plus, AlertCircle, CheckCircle, ChevronRight, Download } from 'lucide-react'
 import type { Contact, COICategory, Priority, ERPStatus } from '@/types'
 import { ERP_STATUS_LABELS, ERP_STATUS_COLORS } from '@/types'
+
+function exportContactsCSV(contacts: Contact[]) {
+  const headers = [
+    'First Name', 'Last Name', 'Company', 'Phone', 'Email',
+    'City', 'State', 'Category', 'Priority', 'ERP Status',
+    'Last Contacted', 'Next Visit Due', 'Assigned Rep',
+  ]
+  const rows = contacts.map(c => [
+    c.first_name ?? '',
+    c.last_name ?? '',
+    c.company ?? '',
+    c.phone ?? '',
+    c.email ?? '',
+    c.city ?? '',
+    c.state ?? '',
+    (c.category as COICategory | null)?.name ?? '',
+    c.priority ?? '',
+    c.erp_status ?? '',
+    c.last_contacted_at ? new Date(c.last_contacted_at).toLocaleDateString() : '',
+    c.next_visit_due_at ? new Date(c.next_visit_due_at).toLocaleDateString() : '',
+    (c.assigned_rep as { full_name?: string | null } | null)?.full_name ?? '',
+  ])
+  const csv = [headers, ...rows]
+    .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    .join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `contacts-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 interface ContactFormData {
   first_name: string
@@ -125,13 +158,25 @@ export default function Contacts() {
           <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{(contacts ?? []).length} COIs in your market</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add contact
-        </button>
+        <div className="flex items-center gap-2">
+          {(isOwner || isGM) && contacts && contacts.length > 0 && (
+            <button
+              onClick={() => exportContactsCSV(filtered)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-card border border-border hover:border-foreground/20 text-muted-foreground hover:text-foreground text-sm font-medium rounded-lg transition-colors"
+              title="Export filtered contacts to CSV"
+            >
+              <Download className="w-4 h-4" />
+              Export CSV
+            </button>
+          )}
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add contact
+          </button>
+        </div>
       </div>
 
       {/* Search + filters */}

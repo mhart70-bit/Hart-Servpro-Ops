@@ -14,6 +14,8 @@ import QuickGuide from '@/pages/QuickGuide'
 import FlaggedQueue from '@/pages/FlaggedQueue'
 import Team from '@/pages/Team'
 import ContactDetail from '@/pages/ContactDetail'
+import Alerts from '@/pages/Alerts'
+import RepActivity from '@/pages/RepActivity'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -49,6 +51,8 @@ export default function App() {
           <Route path="markets" element={<Markets />} />
           <Route path="flagged" element={<FlaggedQueue />} />
           <Route path="team" element={<Team />} />
+          <Route path="alerts" element={<Alerts />} />
+          <Route path="rep-activity" element={<RepActivity />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
