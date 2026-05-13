@@ -32,6 +32,36 @@ export default function Sales() {
     emergency_priority: false, notes: '',
   })
 
+  const [editDeal, setEditDeal] = useState<Deal | null>(null)
+  const [editForm, setEditForm] = useState<{
+    title: string; deal_value: string; damage_type: DamageType | '';
+    stage: DealStage; insurance_claim_number: string; insurance_carrier: string;
+    property_address: string; property_type: 'residential' | 'commercial' | 'industrial';
+    emergency_priority: boolean; notes: string;
+  }>({
+    title: '', deal_value: '', damage_type: '', stage: 'emergency_call',
+    insurance_claim_number: '', insurance_carrier: '', property_address: '',
+    property_type: 'residential', emergency_priority: false, notes: '',
+  })
+  const [editError, setEditError] = useState<string | null>(null)
+
+  function openEditDeal(deal: Deal) {
+    setEditDeal(deal)
+    setEditForm({
+      title: deal.title ?? '',
+      deal_value: deal.deal_value?.toString() ?? '',
+      damage_type: deal.damage_type ?? '',
+      stage: deal.stage,
+      insurance_claim_number: deal.insurance_claim_number ?? '',
+      insurance_carrier: deal.insurance_carrier ?? '',
+      property_address: deal.property_address ?? '',
+      property_type: deal.property_type ?? 'residential',
+      emergency_priority: deal.emergency_priority ?? false,
+      notes: deal.notes ?? '',
+    })
+    setEditError(null)
+  }
+
   const { data: deals, isLoading } = useQuery({
     queryKey: ['deals', profile?.id, isOwner, stageFilter],
     queryFn: async () => {
@@ -63,6 +93,31 @@ export default function Sales() {
       }
     },
     enabled: !!profile,
+  })
+
+  const updateDealMutation = useMutation({
+    mutationFn: async () => {
+      if (!editDeal) return
+      const { error } = await supabase.from('deals').update({
+        title: editForm.title || null,
+        deal_value: editForm.deal_value ? parseFloat(editForm.deal_value) : null,
+        damage_type: editForm.damage_type || null,
+        stage: editForm.stage,
+        insurance_claim_number: editForm.insurance_claim_number || null,
+        insurance_carrier: editForm.insurance_carrier || null,
+        property_address: editForm.property_address || null,
+        property_type: editForm.property_type,
+        emergency_priority: editForm.emergency_priority,
+        notes: editForm.notes || null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', editDeal.id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deals'] })
+      setEditDeal(null)
+    },
+    onError: (err) => setEditError(err instanceof Error ? err.message : 'Failed to save'),
   })
 
   const advanceStageMutation = useMutation({
@@ -175,7 +230,7 @@ export default function Sales() {
             const stageAlert = daysInStage >= 30 ? 'text-red-400' : daysInStage >= 14 ? 'text-amber-400' : 'text-muted-foreground'
 
             return (
-              <div key={deal.id} className="bg-card border border-border rounded-xl p-4">
+              <div key={deal.id} onClick={() => openEditDeal(deal)} className="bg-card border border-border rounded-xl p-4 cursor-pointer hover:border-foreground/20 transition-colors">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -213,7 +268,7 @@ export default function Sales() {
 
                 {canAdvance && (
                   <button
-                    onClick={() => advanceStageMutation.mutate({ id: deal.id, currentStage: deal.stage })}
+                    onClick={(e) => { e.stopPropagation(); advanceStageMutation.mutate({ id: deal.id, currentStage: deal.stage }) }}
                     className="mt-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -225,6 +280,99 @@ export default function Sales() {
           })
         )}
       </div>
+
+      {/* Deal Edit Modal */}
+      {editDeal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
+              <h2 className="text-base font-semibold text-foreground">Edit Deal</h2>
+              <button onClick={() => setEditDeal(null)} className="text-muted-foreground hover:text-foreground text-lg">×</button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">Title / Description</label>
+                <input value={editForm.title} onChange={e => setEditForm(f => ({...f, title: e.target.value}))}
+                  placeholder="e.g. Water damage — Smith residence"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">Deal value ($)</label>
+                  <input type="number" value={editForm.deal_value} onChange={e => setEditForm(f => ({...f, deal_value: e.target.value}))}
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">Damage type</label>
+                  <select value={editForm.damage_type} onChange={e => setEditForm(f => ({...f, damage_type: e.target.value as DamageType | ''}))}
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
+                    <option value="">Select…</option>
+                    {['water','fire','mold','storm','biohazard','other'].map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">Stage</label>
+                <select value={editForm.stage} onChange={e => setEditForm(f => ({...f, stage: e.target.value as DealStage}))}
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
+                  {DEAL_STAGE_ORDER.map(s => <option key={s} value={s}>{DEAL_STAGE_LABELS[s]}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">Insurance claim #</label>
+                  <input value={editForm.insurance_claim_number} onChange={e => setEditForm(f => ({...f, insurance_claim_number: e.target.value}))}
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">Carrier</label>
+                  <input value={editForm.insurance_carrier} onChange={e => setEditForm(f => ({...f, insurance_carrier: e.target.value}))}
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">Property address</label>
+                <input value={editForm.property_address} onChange={e => setEditForm(f => ({...f, property_address: e.target.value}))}
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+              </div>
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">Property type</label>
+                <select value={editForm.property_type} onChange={e => setEditForm(f => ({...f, property_type: e.target.value as 'residential' | 'commercial' | 'industrial'}))}
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
+                  <option value="residential">Residential</option>
+                  <option value="commercial">Commercial</option>
+                  <option value="industrial">Industrial</option>
+                </select>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={editForm.emergency_priority} onChange={e => setEditForm(f => ({...f, emergency_priority: e.target.checked}))}
+                  className="rounded" />
+                <span className="text-sm text-foreground">Emergency priority</span>
+              </label>
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">Notes</label>
+                <textarea value={editForm.notes} onChange={e => setEditForm(f => ({...f, notes: e.target.value}))}
+                  rows={3}
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none" />
+              </div>
+            </div>
+            {editError && (
+              <div className="px-5 pb-3">
+                <div className="px-3 py-2 bg-red-400/10 border border-red-400/20 rounded-lg">
+                  <p className="text-xs text-red-400">{editError}</p>
+                </div>
+              </div>
+            )}
+            <div className="px-5 py-4 border-t border-border flex gap-2 sticky bottom-0 bg-card">
+              <button onClick={() => setEditDeal(null)} className="flex-1 py-2 text-sm text-muted-foreground bg-muted rounded-lg">Cancel</button>
+              <button onClick={() => updateDealMutation.mutate()} disabled={updateDealMutation.isPending}
+                className="flex-1 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 disabled:opacity-50 rounded-lg transition-colors">
+                {updateDealMutation.isPending ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* New Deal Modal */}
       {showForm && (

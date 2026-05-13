@@ -8,10 +8,12 @@ import {
   LogOut,
   CalendarDays,
   BookOpenCheck,
+  BookOpen,
   ShieldAlert,
   UserCog,
   AlertTriangle,
   Activity,
+  Target,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { getInitials } from '@/lib/utils'
@@ -21,6 +23,7 @@ const REP_NAV = [
   { to: '/log',       label: 'Log Activity', icon: Mic },
   { to: '/contacts',  label: 'My Contacts',  icon: Users },
   { to: '/sales',     label: 'My Pipeline',  icon: TrendingUp },
+  { to: '/ledger',    label: 'My History',   icon: BookOpen },
   { to: '/guide',     label: 'Quick Guide',  icon: BookOpenCheck },
 ]
 
@@ -30,6 +33,7 @@ const ADMIN_NAV = [
   { to: '/sales',         label: 'All Deals',      icon: TrendingUp },
   { to: '/markets',       label: 'Markets',        icon: BarChart2 },
   { to: '/weekly',        label: 'Weekly Summary', icon: CalendarDays },
+  { to: '/quotas',        label: 'Quotas',         icon: Target },
   { to: '/flagged',       label: 'Flagged Queue',  icon: ShieldAlert },
   { to: '/team',          label: 'Team',           icon: UserCog },
   { to: '/rep-activity',  label: 'Rep Activity',   icon: Activity },

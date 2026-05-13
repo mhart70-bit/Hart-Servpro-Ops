@@ -16,6 +16,7 @@ import Team from '@/pages/Team'
 import ContactDetail from '@/pages/ContactDetail'
 import Alerts from '@/pages/Alerts'
 import RepActivity from '@/pages/RepActivity'
+import Quotas from '@/pages/Quotas'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="team" element={<Team />} />
           <Route path="alerts" element={<Alerts />} />
           <Route path="rep-activity" element={<RepActivity />} />
+          <Route path="quotas" element={<Quotas />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
