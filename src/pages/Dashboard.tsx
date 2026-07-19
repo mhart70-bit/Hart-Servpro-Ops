@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import type { Contact } from '@/types'
 import QuickLogModal from '@/components/QuickLogModal'
 import { useTour, TOUR_DONE_KEY } from '@/components/Tour'
+import MorningBriefing from '@/components/MorningBriefing'
 
 const MARKETS = ['Amarillo', 'Abilene', 'Sugar Land', 'San Angelo', 'Victoria']
 
@@ -244,6 +245,9 @@ export default function Dashboard() {
           Log Activity <ChevronRight className="w-4 h-4" />
         </button>
       </div>
+
+      {/* AI morning briefing */}
+      <MorningBriefing />
 
       {/* 4 stat tiles */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-10">
