@@ -49,7 +49,7 @@ export default function FlaggedQueue() {
     onSuccess: (id) => {
       setCleared(prev => new Set([...prev, id]))
       queryClient.invalidateQueries({ queryKey: ['flagged-queue'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard-activity'] })
+      queryClient.invalidateQueries({ queryKey: ['dash-flagged'] })
     },
   })
 

@@ -115,6 +115,7 @@ export default function Sales() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deals'] })
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] })
       setEditDeal(null)
     },
     onError: (err) => setEditError(err instanceof Error ? err.message : 'Failed to save'),
@@ -128,7 +129,10 @@ export default function Sales() {
       const { error } = await supabase.from('deals').update({ stage: nextStage, updated_at: new Date().toISOString() }).eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['deals'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deals'] })
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] })
+    },
   })
 
   async function handleSaveDeal() {
@@ -153,6 +157,7 @@ export default function Sales() {
       return
     }
     queryClient.invalidateQueries({ queryKey: ['deals'] })
+    queryClient.invalidateQueries({ queryKey: ['sales-stats'] })
     setShowForm(false)
   }
 

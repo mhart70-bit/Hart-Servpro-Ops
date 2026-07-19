@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
@@ -95,7 +96,8 @@ export default function WeeklySummary() {
   })
 
   // Accountability: ERPs stuck at verbal_commitment for 30+ days
-  const staleErpDate = subDays(new Date(), 30).toISOString()
+  // (stable per mount — a per-render value in the query key refetches forever)
+  const staleErpDate = useMemo(() => subDays(new Date(), 30).toISOString(), [])
   const { data: staleErps } = useQuery({
     queryKey: ['weekly-stale-erps', staleErpDate],
     queryFn: async () => {

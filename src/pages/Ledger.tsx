@@ -29,14 +29,18 @@ export default function Ledger() {
   const [marketFilter, setMarketFilter] = useState('all')
 
   const { data: entries, isLoading } = useQuery({
-    queryKey: ['ledger', profile?.id, isOwner, isGM],
+    queryKey: ['ledger', profile?.id, isOwner, isGM, marketFilter],
     queryFn: async () => {
+      // Market filter is applied server-side: filtering the newest-200 rows
+      // client-side silently hid older entries from the selected market.
+      const locJoin = marketFilter !== 'all' ? 'location:locations!inner(name)' : 'location:locations(name)'
       let q = supabase
         .from('activities')
-        .select('*, contact:contacts(first_name, last_name, company), rep:profiles(full_name), location:locations(name)')
+        .select(`*, contact:contacts(first_name, last_name, company), rep:profiles(full_name), ${locJoin}`)
         .order('occurred_at', { ascending: false })
         .limit(200)
 
+      if (marketFilter !== 'all') q = q.eq('location.name', marketFilter)
       if (!isOwner && !isGM && profile?.id) q = q.eq('rep_id', profile.id)
       else if (isGM && profile?.location_id) q = q.eq('location_id', profile.location_id)
 

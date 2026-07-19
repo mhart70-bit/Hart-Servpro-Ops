@@ -37,12 +37,15 @@ export default function QuickLogModal({ open, onClose, defaultContactId }: Props
       setSearch('')
       const d = new Date()
       d.setDate(d.getDate() + 7)
-      setFollowUpDate(d.toISOString().slice(0, 10))
+      // Local calendar date — toISOString() is UTC and rolls to tomorrow
+      // during evening hours, silently shifting the default by a day
+      const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      setFollowUpDate(local)
     }
   }, [open, defaultContactId])
 
   const { data: contacts } = useQuery({
-    queryKey: ['contacts-picker', profile?.id],
+    queryKey: ['contacts-picker-quick', profile?.id],
     queryFn: async () => {
       let q = supabase
         .from('contacts')
@@ -82,9 +85,16 @@ export default function QuickLogModal({ open, onClose, defaultContactId }: Props
       if (error) throw error
 
       if (contactId && selectedContact) {
-        const freqDays = selectedContact.visit_frequency_days ?? 30
-        const next = new Date()
-        next.setDate(next.getDate() + freqDays)
+        // The follow-up date the rep picked drives the next visit; the
+        // visit-frequency default is only a fallback when the field is cleared.
+        let next: Date
+        if (followUpDate) {
+          next = new Date(`${followUpDate}T12:00:00`)
+        } else {
+          const freqDays = selectedContact.visit_frequency_days ?? 30
+          next = new Date()
+          next.setDate(next.getDate() + freqDays)
+        }
         await supabase.from('contacts').update({
           last_contacted_at: now,
           next_visit_due_at: next.toISOString(),

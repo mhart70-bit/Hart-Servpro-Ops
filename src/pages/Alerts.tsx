@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
@@ -10,8 +11,12 @@ import { subDays } from 'date-fns'
 export default function Alerts() {
   const { profile, isOwner, isGM } = useAuth()
 
-  const threeDaysAgo = subDays(new Date(), 3).toISOString()
-  const fourteenDaysAgo = subDays(new Date(), 14).toISOString()
+  // Stable per mount — fresh values on every render would change the query
+  // keys each render and refetch in an infinite loop (page stuck on Loading…)
+  const { threeDaysAgo, fourteenDaysAgo } = useMemo(() => ({
+    threeDaysAgo: subDays(new Date(), 3).toISOString(),
+    fourteenDaysAgo: subDays(new Date(), 14).toISOString(),
+  }), [])
 
   // 1. Inactive reps — no activity in 3+ days
   const { data: inactiveReps, isLoading: loadingReps } = useQuery({

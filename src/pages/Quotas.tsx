@@ -19,10 +19,6 @@ export default function Quotas() {
   const { profile, isOwner, isGM } = useAuth()
   const queryClient = useQueryClient()
 
-  if (!isOwner && !isGM) {
-    return <Navigate to="/dashboard" replace />
-  }
-
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth() + 1
@@ -121,6 +117,12 @@ export default function Quotas() {
     return (dealsThisMonth ?? [])
       .filter(d => d.rep_id === repId)
       .reduce((s, d) => s + (d.deal_value ?? 0), 0)
+  }
+
+  // Role guard AFTER all hooks — an early return above the hooks crashes with
+  // a Rules-of-Hooks violation once the async profile load flips the branch.
+  if (profile && !isOwner && !isGM) {
+    return <Navigate to="/dashboard" replace />
   }
 
   return (

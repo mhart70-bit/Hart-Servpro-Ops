@@ -207,13 +207,19 @@ export default function ContactDetail() {
   })
 
   // ── Next Step save ───────────────────────────────────────
+  const [nextStepError, setNextStepError] = useState<string | null>(null)
   async function handleNextStepBlur() {
     const value = nextStepRef.current?.value ?? ''
     const current = contact?.notes ?? ''
     if (value === current) return
     setNextStepSaving(true)
-    await supabase.from('contacts').update({ notes: value || null }).eq('id', id!)
-    queryClient.invalidateQueries({ queryKey: ['contact', id] })
+    setNextStepError(null)
+    const { error } = await supabase.from('contacts').update({ notes: value || null }).eq('id', id!)
+    if (error) {
+      setNextStepError('Could not save — check your connection and click into the field to retry.')
+    } else {
+      queryClient.invalidateQueries({ queryKey: ['contact', id] })
+    }
     setNextStepSaving(false)
   }
 
@@ -441,6 +447,9 @@ export default function ContactDetail() {
             <span className="ml-auto text-[10px] text-muted-foreground">Saving…</span>
           )}
         </div>
+        {nextStepError && (
+          <p className="text-[11px] text-red-400 mb-1">{nextStepError}</p>
+        )}
         <textarea
           ref={nextStepRef}
           key={contact.id}
