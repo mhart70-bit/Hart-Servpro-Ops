@@ -16,6 +16,7 @@ import {
   Activity,
   Target,
   MapPin,
+  Sparkles,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { getInitials } from '@/lib/utils'
@@ -33,6 +34,7 @@ const REP_NAV = [
 const ADMIN_NAV = [
   { to: '/dashboard',     label: 'Command Center', icon: LayoutDashboard },
   { to: '/contacts',      label: 'All Contacts',   icon: Users },
+  { to: '/find-contacts', label: 'Find Contacts',  icon: Sparkles },
   { to: '/sales',         label: 'All Deals',      icon: TrendingUp },
   { to: '/markets',       label: 'Markets',        icon: BarChart2 },
   { to: '/weekly',        label: 'Weekly Summary', icon: CalendarDays },

@@ -18,6 +18,7 @@ import ContactDetail from '@/pages/ContactDetail'
 import Alerts from '@/pages/Alerts'
 import RepActivity from '@/pages/RepActivity'
 import Quotas from '@/pages/Quotas'
+import ApolloSearch from '@/pages/ApolloSearch'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="alerts" element={<Alerts />} />
           <Route path="rep-activity" element={<RepActivity />} />
           <Route path="quotas" element={<Quotas />} />
+          <Route path="find-contacts" element={<ApolloSearch />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
