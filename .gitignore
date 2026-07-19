@@ -34,3 +34,6 @@ supabase/.temp/
 *.log
 npm-debug.log*
 .vercel
+
+# Supabase functions env
+supabase/functions/.env
