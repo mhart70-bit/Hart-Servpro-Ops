@@ -46,10 +46,12 @@ Conversational, cross-market, no dashboard digging. Read-only by design.
 lets claude.ai / Claude Desktop talk to outside systems. Added once in Claude's
 Settings → Connectors, authenticated with Mark's Supabase account, **scoped
 read-only** to this project.
-**Why read-only:** a conversational AI with write access to production is a
-prompt-injection risk with no upside — writes belong in the app's confirm-card
-flow (Layer 2). Reading is where the leverage is: every "who / what / how much"
-question answered in seconds.
+**Why read-only first:** a conversational AI with unattended write access to
+production is a prompt-injection risk. Week one: read-only, build trust.
+Then: enable **add** and **archive** (is_active=false) with claude.ai's
+per-action approval prompts as the confirm step. Hard delete does not exist
+at the database level (no delete policy — deliberate); "remove" always means
+reversible archive with history preserved.
 **Build cost:** ~zero code. Configuration + a saved "analyst" prompt with the
 schema explained (tables: contacts, activities, deals, profiles, quotas).
 
@@ -88,6 +90,7 @@ Two new edge functions, both clones of the proven `parse-note` pattern
 | **B — Owner MCP** | Connect Mark's Claude to the project read-only; saved analyst prompt; test with real questions | Mark (10 min, guided) + me | ~1 hr |
 | **C — Morning briefing** | `plan-day` function + dashboard card + tests; upgrade both functions to `claude-sonnet-5` | me | ~1 day |
 | **D — Voice commands** | `parse-command` + confirm card + 6 starter commands + tests | me | ~2–3 days |
+| **F — Apollo import** | CSV import with dedupe preview (match email/phone/name+company); later: direct Apollo API search via edge function (server-held Apollo key) | me | ~½ day (CSV) |
 | **E — Proactive** | Monday digest, then SMS if wanted | me | later |
 
 **Running cost, honestly:** the briefing is ~2k tokens per rep per day; commands
