@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import Layout from '@/components/Layout'
 import Login from '@/pages/Login'
+import ResetPassword from '@/pages/ResetPassword'
 import Dashboard from '@/pages/Dashboard'
 import MyRoute from '@/pages/MyRoute'
 import Contacts from '@/pages/Contacts'
@@ -34,6 +35,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/" element={
           <PrivateRoute>
             <Layout />

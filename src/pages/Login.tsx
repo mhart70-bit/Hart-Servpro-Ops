@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
+import { supabase } from '@/lib/supabase'
 
 export default function Login() {
   const { signIn } = useAuth()
@@ -9,6 +10,9 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [resetMode, setResetMode] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -20,6 +24,25 @@ export default function Login() {
       setLoading(false)
     } else {
       navigate('/dashboard')
+    }
+  }
+
+  async function handleReset(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (!email) {
+      setError('Enter your email above first.')
+      return
+    }
+    setResetLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    setResetLoading(false)
+    if (error) {
+      setError(error.message)
+    } else {
+      setResetSent(true)
     }
   }
 
@@ -83,6 +106,40 @@ export default function Login() {
             >
               {loading ? 'Signing in…' : 'Sign in'}
             </button>
+
+            <div className="pt-1 text-right">
+              {!resetMode ? (
+                <button
+                  type="button"
+                  onClick={() => { setResetMode(true); setError(null) }}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Forgot password?
+                </button>
+              ) : resetSent ? (
+                <p className="text-xs text-emerald-700">
+                  Check {email} for a reset link.
+                </p>
+              ) : (
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    disabled={resetLoading}
+                    className="text-xs text-primary hover:underline disabled:opacity-50"
+                  >
+                    {resetLoading ? 'Sending…' : `Send reset link to ${email || 'your email'}`}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setResetMode(false)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    cancel
+                  </button>
+                </div>
+              )}
+            </div>
           </form>
         </div>
 
