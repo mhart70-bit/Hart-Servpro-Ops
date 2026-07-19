@@ -6,6 +6,7 @@ import {
   TrendingUp,
   BarChart2,
   LogOut,
+  KeyRound,
   CalendarDays,
   BookOpenCheck,
   BookOpen,
@@ -14,12 +15,14 @@ import {
   AlertTriangle,
   Activity,
   Target,
+  MapPin,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { getInitials } from '@/lib/utils'
 
 const REP_NAV = [
   { to: '/dashboard', label: 'Dashboard',    icon: LayoutDashboard },
+  { to: '/route',     label: 'My Route',     icon: MapPin },
   { to: '/log',       label: 'Log Activity', icon: Mic },
   { to: '/contacts',  label: 'My Contacts',  icon: Users },
   { to: '/sales',     label: 'My Pipeline',  icon: TrendingUp },
@@ -38,6 +41,7 @@ const ADMIN_NAV = [
   { to: '/team',          label: 'Team',           icon: UserCog },
   { to: '/rep-activity',  label: 'Rep Activity',   icon: Activity },
   { to: '/alerts',        label: 'Alerts',         icon: AlertTriangle },
+  { to: '/guide',         label: 'Quick Guide',    icon: BookOpenCheck },
 ]
 
 interface SidebarProps {
@@ -74,14 +78,14 @@ export default function Sidebar({ onClose }: SidebarProps) {
       <div className="flex-1 px-3 py-3 overflow-y-auto space-y-0.5">
         {(isOwner || isGM) ? (
           ADMIN_NAV.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} onClick={onClose} className={navLinkClass}>
+            <NavLink key={to} to={to} onClick={onClose} className={navLinkClass} data-tour={`nav-${to.slice(1)}`}>
               <Icon className="w-4 h-4 flex-shrink-0" />
               {label}
             </NavLink>
           ))
         ) : (
           REP_NAV.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} onClick={onClose} className={navLinkClass}>
+            <NavLink key={to} to={to} onClick={onClose} className={navLinkClass} data-tour={`nav-${to.slice(1)}`}>
               <Icon className="w-4 h-4 flex-shrink-0" />
               {label}
             </NavLink>
@@ -104,6 +108,13 @@ export default function Sidebar({ onClose }: SidebarProps) {
             </div>
           </div>
         </div>
+        <button
+          onClick={() => { navigate('/reset-password'); onClose?.() }}
+          className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
+        >
+          <KeyRound className="w-3.5 h-3.5" />
+          Change password
+        </button>
         <button
           onClick={handleSignOut}
           className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"

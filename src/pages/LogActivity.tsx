@@ -101,11 +101,18 @@ export default function LogActivity() {
       if (error) throw error
 
       if (selectedContactId) {
-        const { data: contactData } = await supabase
-          .from('contacts').select('visit_frequency_days').eq('id', selectedContactId).single()
-        const days = contactData?.visit_frequency_days ?? 30
-        const nextVisit = new Date()
-        nextVisit.setDate(nextVisit.getDate() + days)
+        // A spoken follow-up date ("follow up Thursday") wins; the contact's
+        // visit frequency is only the fallback when no date was mentioned.
+        let nextVisit: Date
+        if (parsed.follow_up_date) {
+          nextVisit = new Date(`${parsed.follow_up_date}T12:00:00`)
+        } else {
+          const { data: contactData } = await supabase
+            .from('contacts').select('visit_frequency_days').eq('id', selectedContactId).single()
+          const days = contactData?.visit_frequency_days ?? 30
+          nextVisit = new Date()
+          nextVisit.setDate(nextVisit.getDate() + days)
+        }
         await supabase.from('contacts').update({
           last_contacted_at: new Date().toISOString(),
           next_visit_due_at: nextVisit.toISOString(),
@@ -113,17 +120,32 @@ export default function LogActivity() {
       }
 
       if (parsed.deal_value && selectedContactId) {
-        await supabase.from('deals').insert({
-          org_id: profile.org_id,
-          contact_id: selectedContactId,
-          rep_id: profile.id,
-          location_id: profile.location_id,
-          stage: 'assessment',
-          deal_value: parsed.deal_value,
-          damage_type: parsed.damage_type,
-          emergency_priority: parsed.urgency === 'high',
-          title: `${parsed.damage_type ?? 'Restoration'} — ${selectedContact ? fullName(selectedContact) : 'New Lead'}`,
-        })
+        // Don't create a duplicate: mentioning a dollar amount in a later note
+        // about the same job should update the existing open deal, not add one.
+        const { data: openDeals } = await supabase
+          .from('deals')
+          .select('id, stage')
+          .eq('contact_id', selectedContactId)
+          .not('stage', 'in', '("paid","lost")')
+          .limit(1)
+        if (openDeals && openDeals.length > 0) {
+          await supabase.from('deals').update({
+            deal_value: parsed.deal_value,
+            updated_at: new Date().toISOString(),
+          }).eq('id', openDeals[0].id)
+        } else {
+          await supabase.from('deals').insert({
+            org_id: profile.org_id,
+            contact_id: selectedContactId,
+            rep_id: profile.id,
+            location_id: profile.location_id,
+            stage: 'assessment',
+            deal_value: parsed.deal_value,
+            damage_type: parsed.damage_type,
+            emergency_priority: parsed.urgency === 'high',
+            title: `${parsed.damage_type ?? 'Restoration'} — ${selectedContact ? fullName(selectedContact) : 'New Lead'}`,
+          })
+        }
       }
 
       queryClient.invalidateQueries({ queryKey: ['contacts'] })
@@ -201,6 +223,15 @@ export default function LogActivity() {
           ))}
         </div>
 
+        {saveMutation.error && (
+          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mb-4">
+            <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-red-700">
+              Save failed: {saveMutation.error instanceof Error ? saveMutation.error.message : 'Unknown error'} — your note is still here, try again.
+            </p>
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button
             onClick={() => { setStep('input'); voiceRecorder.reset() }}
@@ -245,7 +276,7 @@ export default function LogActivity() {
       {/* Two-column */}
       <div className="grid lg:grid-cols-[1fr_300px] gap-5">
         {/* Left: input */}
-        <div className="bg-card border border-border rounded-2xl p-6 flex flex-col">
+        <div className="bg-card border border-border rounded-2xl p-6 flex flex-col" data-tour="log-input">
           <h2 className="text-xl font-serif font-semibold text-foreground mb-5">Voice or text</h2>
 
           {/* Contact picker pill */}

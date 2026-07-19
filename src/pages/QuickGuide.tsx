@@ -1,4 +1,5 @@
-import { BookOpenCheck } from 'lucide-react'
+import { BookOpenCheck, PlayCircle } from 'lucide-react'
+import { useTour } from '@/components/Tour'
 
 const FRAMEWORK = [
   {
@@ -46,6 +47,7 @@ const REMINDERS = [
 ]
 
 export default function QuickGuide() {
+  const { startTour } = useTour()
   return (
     <div className="p-4 lg:p-6 max-w-3xl mx-auto">
       {/* Header */}
@@ -59,6 +61,13 @@ export default function QuickGuide() {
           Three questions, one field note. Use the "Who, What, When" framework every time you submit — the AI handles the rest.
           If it hears all three, your confidence score will sit at ninety-plus and the record enters the permanent ledger without a flag.
         </p>
+        <button
+          onClick={startTour}
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded-full transition-colors"
+        >
+          <PlayCircle className="w-4 h-4" />
+          Learn Hart Sales OS — interactive tour
+        </button>
       </div>
 
       {/* Framework cards */}

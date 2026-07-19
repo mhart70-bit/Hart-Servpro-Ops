@@ -8,6 +8,7 @@ import { FileText, TrendingUp, Flag, AlertTriangle, ChevronRight, MapPin, AlertC
 import { useNavigate } from 'react-router-dom'
 import type { Contact } from '@/types'
 import QuickLogModal from '@/components/QuickLogModal'
+import { useTour, TOUR_DONE_KEY } from '@/components/Tour'
 
 const MARKETS = ['Amarillo', 'Abilene', 'Sugar Land', 'San Angelo', 'Victoria']
 
@@ -39,6 +40,11 @@ export default function Dashboard() {
   const monthStart = startOfMonth(new Date()).toISOString()
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString()
   const [showQuickLog, setShowQuickLog] = useState(false)
+  const [quickLogContactId, setQuickLogContactId] = useState<string | undefined>()
+  const { startTour, tourActive } = useTour()
+  const [tourDismissed, setTourDismissed] = useState(() => {
+    try { return localStorage.getItem(TOUR_DONE_KEY) === '1' } catch { return true }
+  })
 
   const firstName = profile?.full_name?.split(' ')[0] ?? null
 
@@ -102,7 +108,7 @@ export default function Dashboard() {
 
   // Admin: market activity + deals snapshot
   const { data: marketActivities } = useQuery({
-    queryKey: ['dash-market-acts', monthStart],
+    queryKey: ['dash-market-acts', weekStart],
     queryFn: async () => {
       const { data } = await supabase
         .from('activities')
@@ -190,6 +196,32 @@ export default function Dashboard() {
   return (
     <div className="p-6 lg:p-10 max-w-5xl mx-auto">
 
+      {/* First-visit tour invitation */}
+      {!tourDismissed && !tourActive && (
+        <div className="mb-6 flex items-center justify-between gap-3 bg-primary/10 border border-primary/30 rounded-xl px-4 py-3">
+          <p className="text-sm text-foreground">
+            New here? <span className="font-medium">Learn Hart Sales OS</span> in a 2-minute guided tour.
+          </p>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => { setTourDismissed(true); startTour() }}
+              className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors"
+            >
+              Start tour
+            </button>
+            <button
+              onClick={() => {
+                setTourDismissed(true)
+                try { localStorage.setItem(TOUR_DONE_KEY, '1') } catch { /* ignore */ }
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              No thanks
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-10">
         <div>
@@ -228,7 +260,7 @@ export default function Dashboard() {
 
       {/* Admin: Markets at a glance */}
       {(isOwner || isGM) && (
-        <div className="mb-8">
+        <div className="mb-8" data-tour="markets">
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="text-xl font-serif font-semibold text-foreground">Markets at a glance</h2>
             <button
@@ -316,7 +348,7 @@ export default function Dashboard() {
                 </span>
               )}
               <button
-                onClick={() => setShowQuickLog(true)}
+                onClick={() => { setQuickLogContactId(contact.id); setShowQuickLog(true) }}
                 className="opacity-0 group-hover:opacity-100 text-[10px] text-primary border border-primary/30 px-2 py-0.5 rounded-full transition-opacity hover:bg-primary/10"
               >
                 Log
@@ -327,7 +359,7 @@ export default function Dashboard() {
         )
 
         return (
-          <>
+          <div data-tour="hitlist">
             {overdue.length > 0 && (
               <div className="mb-6">
                 <h2 className="text-xl font-serif font-semibold text-foreground mb-3">
@@ -352,7 +384,7 @@ export default function Dashboard() {
                 <p className="text-sm text-muted-foreground">All caught up — no visits due today.</p>
               </div>
             )}
-          </>
+          </div>
         )
       })()}
 
@@ -397,15 +429,20 @@ export default function Dashboard() {
       {/* Floating action button — rep view */}
       {!isOwner && !isGM && (
         <button
-          onClick={() => setShowQuickLog(true)}
+          onClick={() => { setQuickLogContactId(undefined); setShowQuickLog(true) }}
           className="fixed bottom-6 right-6 lg:bottom-8 lg:right-8 w-14 h-14 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-xl flex items-center justify-center z-10 transition-colors"
           title="Log Activity"
+          data-tour="fab"
         >
           <Plus className="w-6 h-6" />
         </button>
       )}
 
-      <QuickLogModal open={showQuickLog} onClose={() => setShowQuickLog(false)} />
+      <QuickLogModal
+        open={showQuickLog}
+        onClose={() => { setShowQuickLog(false); setQuickLogContactId(undefined) }}
+        defaultContactId={quickLogContactId}
+      />
     </div>
   )
 }

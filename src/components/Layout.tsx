@@ -2,11 +2,13 @@ import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import { useState } from 'react'
 import { Menu } from 'lucide-react'
+import { TourProvider } from './Tour'
 
 export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
+    <TourProvider>
     <div className="min-h-screen flex bg-background">
       {/* Mobile overlay */}
       {mobileOpen && (
@@ -44,5 +46,6 @@ export default function Layout() {
         </main>
       </div>
     </div>
+    </TourProvider>
   )
 }

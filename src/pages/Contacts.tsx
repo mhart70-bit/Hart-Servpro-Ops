@@ -185,6 +185,7 @@ export default function Contacts() {
           <button
             onClick={() => setShowForm(true)}
             className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg transition-colors"
+            data-tour="add-contact"
           >
             <Plus className="w-4 h-4" />
             Add contact
