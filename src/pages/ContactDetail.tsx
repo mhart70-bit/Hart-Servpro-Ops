@@ -101,7 +101,7 @@ export default function ContactDetail() {
     queryKey: ['contacts-for-relink'],
     queryFn: async () => {
       let q = supabase.from('contacts').select('id, first_name, last_name, company').eq('is_active', true).order('last_name').limit(200)
-      if (profile?.role === 'rep' && profile.id) q = q.eq('assigned_rep_id', profile.id)
+      if (profile?.role === 'rep' && profile.location_id) q = q.eq('location_id', profile.location_id)
       const { data } = await q
       return data ?? []
     },

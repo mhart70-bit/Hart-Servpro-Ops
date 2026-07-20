@@ -35,6 +35,8 @@ const ADMIN_NAV = [
   { to: '/dashboard',     label: 'Command Center', icon: LayoutDashboard },
   { to: '/contacts',      label: 'All Contacts',   icon: Users },
   { to: '/find-contacts', label: 'Find Contacts',  icon: Sparkles },
+  { to: '/route',         label: 'Route Planner',  icon: MapPin },
+  { to: '/log',           label: 'Log Activity',   icon: Mic },
   { to: '/sales',         label: 'All Deals',      icon: TrendingUp },
   { to: '/markets',       label: 'Markets',        icon: BarChart2 },
   { to: '/weekly',        label: 'Weekly Summary', icon: CalendarDays },

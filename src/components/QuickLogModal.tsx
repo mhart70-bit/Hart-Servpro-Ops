@@ -52,7 +52,7 @@ export default function QuickLogModal({ open, onClose, defaultContactId }: Props
         .select('id, first_name, last_name, company, visit_frequency_days')
         .eq('is_active', true)
         .order('last_name')
-      if (profile?.role === 'rep' && profile.id) q = q.eq('assigned_rep_id', profile.id)
+      if (profile?.role === 'rep' && profile.location_id) q = q.eq('location_id', profile.location_id)
       const { data } = await q
       return (data ?? []) as (Pick<Contact, 'id' | 'first_name' | 'last_name' | 'company'> & { visit_frequency_days: number | null })[]
     },

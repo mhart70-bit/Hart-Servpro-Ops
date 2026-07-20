@@ -69,7 +69,7 @@ export default function MyRoute() {
         .eq('is_active', true)
         .order('next_visit_due_at', { ascending: true, nullsFirst: false })
         .limit(60)
-      if (!isOwner && !isGM && profile?.id) q = q.eq('assigned_rep_id', profile.id)
+      if (!isOwner && !isGM && profile?.location_id) q = q.eq('location_id', profile.location_id)
       else if (profile?.location_id) q = q.eq('location_id', profile.location_id)
       const { data, error } = await q
       if (error) throw error

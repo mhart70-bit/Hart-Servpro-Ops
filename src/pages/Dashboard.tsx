@@ -99,7 +99,7 @@ export default function Dashboard() {
         .select('id', { count: 'exact' })
         .lt('next_visit_due_at', new Date().toISOString())
         .eq('is_active', true)
-      if (!isOwner && !isGM && profile?.id) q = q.eq('assigned_rep_id', profile.id)
+      if (!isOwner && !isGM && profile?.location_id) q = q.eq('location_id', profile.location_id)
       else if (isGM && profile?.location_id) q = q.eq('location_id', profile.location_id)
       const { count } = await q
       return count ?? 0
@@ -142,7 +142,7 @@ export default function Dashboard() {
         .from('contacts')
         .select('id, first_name, last_name, company, phone, next_visit_due_at, priority, category:coi_categories(name)')
         .eq('is_active', true)
-        .eq('assigned_rep_id', profile!.id)
+        .eq('location_id', profile!.location_id)
         .lte('next_visit_due_at', todayEnd.toISOString())
         .order('next_visit_due_at', { ascending: true })
         .limit(20)

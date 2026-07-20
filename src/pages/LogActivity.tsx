@@ -41,7 +41,7 @@ export default function LogActivity() {
     queryKey: ['contacts-picker', profile?.id],
     queryFn: async () => {
       let q = supabase.from('contacts').select('id, first_name, last_name, company, category:coi_categories(name)').eq('is_active', true).order('last_name')
-      if (profile?.id && profile.role === 'rep') q = q.eq('assigned_rep_id', profile.id)
+      if (profile?.location_id && profile.role === 'rep') q = q.eq('location_id', profile.location_id)
       const { data } = await q
       return (data ?? []) as unknown as (Contact & { category: { name: string } | null })[]
     },

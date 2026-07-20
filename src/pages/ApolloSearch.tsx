@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
@@ -22,6 +22,7 @@ interface Result { first_name: string | null; title: string; company: string }
 export default function ApolloSearch() {
   const { isOwner } = useAuth()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [title, setTitle] = useState('Insurance Agent')
   const [market, setMarket] = useState('Amarillo')
   const [searching, setSearching] = useState(false)
@@ -54,7 +55,7 @@ export default function ApolloSearch() {
     const { data, error } = await supabase.functions.invoke('apollo-import', { body: { market, selections: picks } })
     setImporting(false)
     if (error || data?.error) { setErr(data?.error ?? 'Import failed.'); return }
-    setSummary(`Imported ${data.imported} to ${market}${data.skipped ? ` · ${data.skipped} already in your book` : ''}${data.failed ? ` · ${data.failed} couldn't be added` : ''}.`)
+    setSummary(`Added ${data.imported} contact${data.imported !== 1 ? 's' : ''} to your ${market} book${data.skipped ? ` · ${data.skipped} were already in it` : ''}${data.failed ? ` · ${data.failed} couldn't be added` : ''}.`)
     setResults(null); setSelected(new Set())
     queryClient.invalidateQueries({ queryKey: ['contacts'] })
   }
@@ -68,7 +69,7 @@ export default function ApolloSearch() {
         </div>
         <h1 className="text-3xl font-serif font-semibold text-foreground">Find new COIs</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Search Apollo by type and market, review the list, and add the ones you want. Addresses and phone numbers are filled in automatically.
+          Prospect Apollo's database for new referral partners and <strong className="text-foreground">copy the ones you want into your CRM</strong>. Apollo is just the source — importing adds them to the chosen market's contact list (with address and phone filled in), where your rep can work them. Nothing is added until you review and confirm.
         </p>
       </div>
 
@@ -99,8 +100,14 @@ export default function ApolloSearch() {
 
       {err && <div className="mb-4 px-3 py-2 bg-red-400/10 border border-red-400/20 rounded-lg text-sm text-red-400">{err}</div>}
       {summary && (
-        <div className="mb-4 px-4 py-3 bg-primary/10 border border-primary/25 rounded-xl text-sm text-foreground flex items-center gap-2">
-          <Check className="w-4 h-4 text-primary" /> {summary}
+        <div className="mb-4 px-4 py-3 bg-primary/10 border border-primary/25 rounded-xl text-sm text-foreground flex items-center justify-between gap-3 flex-wrap">
+          <span className="flex items-center gap-2"><Check className="w-4 h-4 text-primary flex-shrink-0" /> {summary}</span>
+          <button
+            onClick={() => navigate('/contacts')}
+            className="text-xs font-medium text-primary hover:underline flex-shrink-0"
+          >
+            View in All Contacts →
+          </button>
         </div>
       )}
 

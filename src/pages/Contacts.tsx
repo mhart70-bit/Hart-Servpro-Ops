@@ -97,7 +97,7 @@ export default function Contacts() {
         .eq('is_active', true)
         .order('last_name', { ascending: true })
 
-      if (!isOwner && !isGM && profile?.id) q = q.eq('assigned_rep_id', profile.id)
+      if (!isOwner && !isGM && profile?.location_id) q = q.eq('location_id', profile.location_id)
       else if (isGM && profile?.location_id) q = q.eq('location_id', profile.location_id)
 
       const { data } = await q
